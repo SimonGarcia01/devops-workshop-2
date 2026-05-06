@@ -15,12 +15,14 @@ pipeline {
 
         stage('Build') {
             steps {
+                sh 'chmod +x gradlew'
                 sh './gradlew :services:circleguard-auth-service:build'
             }
         }
 
         stage('Test') {
             steps {
+                sh 'chmod +x gradlew'
                 sh './gradlew :services:circleguard-auth-service:test'
             }
         }
