@@ -1,19 +1,22 @@
 spring:
   application:
     name: circleguard-auth-service
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/circleguard_auth
+    url: jdbc:postgresql://host.docker.internal:5432/circleguard_auth
     username: admin
     password: password
     driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
   ldap:
-    urls: ldap://localhost:389
+    urls: ldap://host.docker.internal:389
     base: dc=circleguard,dc=edu
     username: cn=admin,dc=circleguard,dc=edu
     password: admin
