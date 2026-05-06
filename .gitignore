@@ -4,6 +4,9 @@ build/
 !**/src/**/build/
 **/build/
 
+#Just keeping the gradle wrapper
+!gradle/wrapper/gradle-wrapper.jar
+
 # Java
 *.class
 *.jar
