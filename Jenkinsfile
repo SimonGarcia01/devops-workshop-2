@@ -28,7 +28,8 @@ pipeline {
 
                     ./gradlew \
                     :services:circleguard-auth-service:test \
-                    :services:circleguard-identity-service:test
+                    :services:circleguard-identity-service:test \
+                    --stacktrace
                 '''
             }
         }
