@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        IMAGE_NAME = "auth-service"
-    }
-
     stages {
 
         stage('Checkout') {
@@ -15,29 +11,58 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'chmod +x gradlew'
-                sh './gradlew :services:circleguard-auth-service:build'
+                sh '''
+                    chmod +x gradlew
+
+                    ./gradlew \
+                    :services:circleguard-auth-service:build \
+                    :services:circleguard-identity-service:build
+                '''
             }
         }
 
         stage('Test') {
             steps {
-                sh 'chmod +x gradlew'
-                sh './gradlew :services:circleguard-auth-service:test'
+                sh '''
+                    chmod +x gradlew
+
+                    ./gradlew \
+                    :services:circleguard-auth-service:test \
+                    :services:circleguard-identity-service:test
+                '''
             }
         }
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t auth-service -f docker/auth/Dockerfile .'
+                sh '''
+                    docker build -t auth-service -f docker/auth/Dockerfile .
+
+                    docker build -t identity-service -f docker/identity/Dockerfile .
+                '''
             }
         }
 
         stage('Deploy to Dev') {
             steps {
-                sh 'kubectl apply -f k8s/dev/auth/deployment.yaml'
-                sh 'kubectl apply -f k8s/dev/auth/service.yaml'
+                sh '''
+                    kubectl apply -f k8s/dev/auth/deployment.yaml
+                    kubectl apply -f k8s/dev/auth/service.yaml
+
+                    kubectl apply -f k8s/dev/identity/deployment.yaml
+                    kubectl apply -f k8s/dev/identity/service.yaml
+                '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
