@@ -16,7 +16,8 @@ pipeline {
 
                     ./gradlew \
                     :services:circleguard-auth-service:build \
-                    :services:circleguard-identity-service:build
+                    :services:circleguard-identity-service:build \
+                    :services:circleguard-promotion-service:build
                 '''
             }
         }
@@ -29,7 +30,7 @@ pipeline {
                     ./gradlew \
                     :services:circleguard-auth-service:test \
                     :services:circleguard-identity-service:test \
-                    --stacktrace
+                    :services:circleguard-promotion-service:test \
                 '''
             }
         }
@@ -40,6 +41,8 @@ pipeline {
                     docker build -t auth-service -f docker/auth/Dockerfile .
 
                     docker build -t identity-service -f docker/identity/Dockerfile .
+
+                    docker build -t promotion-service -f docker/promotion/Dockerfile .
                 '''
             }
         }
@@ -52,6 +55,9 @@ pipeline {
 
                     kubectl apply -f k8s/dev/identity/deployment.yaml
                     kubectl apply -f k8s/dev/identity/service.yaml
+
+                    kubectl apply -f k8s/dev/promotion/deployment.yaml
+                    kubectl apply -f k8s/dev/promotion/service.yaml
                 '''
             }
         }
