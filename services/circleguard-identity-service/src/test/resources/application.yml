@@ -14,7 +14,10 @@ spring:
     hibernate:
       ddl-auto: create-drop
 
+jwt:
+  secret: "this-is-a-super-long-development-secret-key-for-circle-guard-testing-123456789"
+
 vault:
   secret: "746573742d7365637265742d33322d63686172732d6c6f6e672d313233343536" # hex for "test-secret-..."
-  salt: "deadbeef"      # hex for encryption
+  salt: "deadbeef" # hex for encryption
   hash-salt: "12345678" # hex for hashing
