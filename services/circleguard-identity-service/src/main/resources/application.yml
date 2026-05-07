@@ -22,7 +22,7 @@ vault:
   hash-salt: "12345678"
 
 jwt:
-  secret: "my-super-secret-dev-key-32-chars-long-12345678"
+  secret: "1234567890123456789012345678901234567890123456789012345678901234"
 
 server:
   port: 8083
