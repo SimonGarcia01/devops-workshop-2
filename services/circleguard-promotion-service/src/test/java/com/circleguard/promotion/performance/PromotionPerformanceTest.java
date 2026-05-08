@@ -3,9 +3,13 @@ package com.circleguard.promotion.performance;
 import com.circleguard.promotion.service.HealthStatusService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.neo4j.core.Neo4jClient;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.junit.jupiter.Container;
@@ -36,16 +40,24 @@ public class PromotionPerformanceTest {
     @Autowired
     private HealthStatusService healthStatusService;
     
-    @org.springframework.boot.test.mock.mockito.MockBean
-    private org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate;
+        @MockBean
+        private org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate;
+
+        @MockBean
+        private StringRedisTemplate redisTemplate;
 
     @Autowired
     private Neo4jClient neo4jClient;
+
+        private ValueOperations<String, String> valueOperations;
 
     private String rootUser;
 
     @BeforeEach
     void setupBenchmarkData() {
+                valueOperations = Mockito.mock(ValueOperations.class);
+                Mockito.when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+
         // Clear graph
         neo4jClient.query("MATCH (n) DETACH DELETE n").run();
 
