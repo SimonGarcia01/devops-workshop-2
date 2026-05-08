@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: dev
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: notification-service
+
+  template:
+    metadata:
+      labels:
+        app: notification-service
+
+    spec:
+      containers:
+        - name: notification-service
+          image: notification-service:latest
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8082
+
+          env:
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: host.docker.internal:9092
+
+            - name: SPRING_MAIL_HOST
+              value: host.docker.internal
+
+            - name: SPRING_MAIL_PORT
+              value: "25"
+
+            - name: AUTH_API_URL
+              value: http://auth-service:8180
+
+            - name: JWT_SECRET
+              value: "this-is-a-super-long-notification-secret-key-123456"
+
+            - name: QR_SECRET
+              value: "this-is-a-super-long-notification-qr-secret-123"

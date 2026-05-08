@@ -18,7 +18,8 @@ pipeline {
                     :services:circleguard-auth-service:build \
                     :services:circleguard-identity-service:build \
                     :services:circleguard-promotion-service:build \
-                    :services:circleguard-gateway-service:build
+                    :services:circleguard-gateway-service:build \
+                    :services:circleguard-notification-service:build
                 '''
             }
         }
@@ -32,7 +33,8 @@ pipeline {
                     :services:circleguard-auth-service:test \
                     :services:circleguard-identity-service:test \
                     :services:circleguard-promotion-service:test \
-                    :services:circleguard-gateway-service:test
+                    :services:circleguard-gateway-service:test \
+                    :services:circleguard-notification-service:test
                 '''
             }
         }
@@ -47,6 +49,8 @@ pipeline {
                     docker build -t promotion-service -f docker/promotion/Dockerfile .
 
                     docker build -t gateway-service -f docker/gateway/Dockerfile .
+
+                    docker build -t notification-service -f docker/notification/Dockerfile .
                 '''
             }
         }
@@ -65,6 +69,9 @@ pipeline {
 
                     kubectl apply -f k8s/dev/gateway/deployment.yaml
                     kubectl apply -f k8s/dev/gateway/service.yaml
+
+                    kubectl apply -f k8s/dev/notification/deployment.yaml
+                    kubectl apply -f k8s/dev/notification/service.yaml
                 '''
             }
         }
