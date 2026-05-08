@@ -33,7 +33,7 @@ spec:
       serviceAccountName: jenkins
       containers:
         - name: jenkins
-          image: jenkins-custom
+          image: jenkins-custom:v2
           imagePullPolicy: IfNotPresent
           env:
             - name: DOCKER_HOST
@@ -47,7 +47,7 @@ spec:
               mountPath: /var/jenkins_home
         - name: dind
           image: docker:24.0.7-dind
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Never
           securityContext:
             privileged: true
           env:
