@@ -27,7 +27,7 @@ metadata:
   namespace: dev
 subjects:
   - kind: ServiceAccount
-    name: default
+    name: jenkins
     namespace: ci
 roleRef:
   kind: Role
