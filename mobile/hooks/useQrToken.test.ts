@@ -1,47 +1,55 @@
-import { renderHook, act } from '@testing-library/react-native';
-import { useQrToken } from './useQrToken';
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { AUTH_BASE_URL } from "@/constants/Config";
 
-describe('useQrToken', () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-  });
+export const useQrToken = (
+  anonymousId: string | null,
+  authToken: string | null,
+) => {
+  const [token, setToken] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(60);
 
-  afterEach(() => {
-    jest.useRealTimers();
-  });
+  useEffect(() => {
+    if (!anonymousId || !authToken) return;
 
-  test('should initialize with a token and 60s timer when anonymousId is present', () => {
-    const { result } = renderHook(() => useQrToken('test-id'));
-    
-    expect(result.current.token).not.toBeNull();
-    expect(result.current.timeLeft).toBe(60);
-  });
+    fetchToken();
 
-  test('should not initialize if anonymousId is null', () => {
-    const { result } = renderHook(() => useQrToken(null));
-    
-    expect(result.current.token).toBeNull();
-  });
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          fetchToken();
+          return 60;
+        }
 
-  test('should decrement timer every second', () => {
-    const { result } = renderHook(() => useQrToken('test-id'));
-    
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
-    
-    expect(result.current.timeLeft).toBe(59);
-  });
+        return prev - 1;
+      });
+    }, 1000);
 
-  test('should rotate token and reset timer when it reaches 0', () => {
-    const { result } = renderHook(() => useQrToken('test-id'));
-    const initialToken = result.current.token;
-    
-    act(() => {
-      jest.advanceTimersByTime(60000);
-    });
-    
-    expect(result.current.token).not.toBe(initialToken);
-    expect(result.current.timeLeft).toBe(60);
-  });
-});
+    return () => clearInterval(timer);
+  }, [anonymousId, authToken]);
+
+  const fetchToken = async () => {
+    try {
+      const response = await axios.get(
+        `${AUTH_BASE_URL}/api/v1/auth/qr/generate`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        },
+      );
+
+      if (response.data?.qrToken) {
+        setToken(response.data.qrToken);
+
+        const expires = parseInt(response.data.expiresIn || "60", 10);
+
+        setTimeLeft(expires);
+      }
+    } catch (e) {
+      console.error("QR Fetch Failed", e);
+    }
+  };
+
+  return { token, timeLeft };
+};

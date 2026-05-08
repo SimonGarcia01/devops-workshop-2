@@ -1,87 +1,56 @@
-import { renderHook, act, waitFor } from "@testing-library/react-native";
-import { useQrToken } from "./useQrToken";
+import { useState, useEffect } from "react";
 import axios from "axios";
+import { AUTH_BASE_URL } from "@/constants/Config";
 
-jest.mock("axios");
+/**
+ * Hook to fetch and rotate short-lived Campus Entry QR tokens.
+ * Implements Story 2.2: Rotating Token logic.
+ */
+export const useQrToken = (
+  anonymousId: string | null,
+  authToken: string | null,
+) => {
+  const [token, setToken] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(60);
 
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+  useEffect(() => {
+    if (!anonymousId || !authToken) return;
 
-describe("useQrToken", () => {
-  beforeEach(() => {
-    jest.useFakeTimers();
-
-    mockedAxios.get.mockResolvedValue({
-      data: {
-        qrToken: "mock-token",
-        expiresIn: "60",
-      },
-    });
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-    jest.clearAllMocks();
-  });
-
-  test("should initialize with a token and 60s timer when anonymousId is present", async () => {
-    const { result } = renderHook(() => useQrToken("test-id", "auth-token"));
-
-    await waitFor(() => {
-      expect(result.current.token).toBe("mock-token");
-    });
-
-    expect(result.current.timeLeft).toBe(60);
-  });
-
-  test("should not initialize if anonymousId is null", () => {
-    const { result } = renderHook(() => useQrToken(null, "auth-token"));
-
-    expect(result.current.token).toBeNull();
-  });
-
-  test("should decrement timer every second", async () => {
-    const { result } = renderHook(() => useQrToken("test-id", "auth-token"));
-
-    await waitFor(() => {
-      expect(result.current.token).toBe("mock-token");
-    });
-
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
-
-    expect(result.current.timeLeft).toBe(59);
-  });
-
-  test("should rotate token and reset timer when it reaches 0", async () => {
-    mockedAxios.get
-      .mockResolvedValueOnce({
-        data: {
-          qrToken: "first-token",
-          expiresIn: "60",
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          qrToken: "second-token",
-          expiresIn: "60",
-        },
+    fetchToken();
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          fetchToken();
+          return 60;
+        }
+        return prev - 1;
       });
+    }, 1000);
 
-    const { result } = renderHook(() => useQrToken("test-id", "auth-token"));
+    return () => clearInterval(timer);
+  }, [anonymousId, authToken]);
 
-    await waitFor(() => {
-      expect(result.current.token).toBe("first-token");
-    });
+  const fetchToken = async () => {
+    try {
+      const response = await axios.get(
+        `${AUTH_BASE_URL}/api/v1/auth/qr/generate`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        },
+      );
 
-    act(() => {
-      jest.advanceTimersByTime(60000);
-    });
+      if (response.data && response.data.qrToken) {
+        setToken(response.data.qrToken);
+        const expires = parseInt(response.data.expiresIn || "60", 10);
+        setTimeLeft(expires);
+      }
+    } catch (e) {
+      console.error("QR Fetch Failed", e);
+      // Fallback to a recognizable error token if needed, or keep last token
+    }
+  };
 
-    await waitFor(() => {
-      expect(result.current.token).toBe("second-token");
-    });
-
-    expect(result.current.timeLeft).toBe(60);
-  });
-});
+  return { token, timeLeft };
+};
