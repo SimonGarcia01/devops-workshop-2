@@ -38,6 +38,18 @@ pipeline {
                 '''
             }
         }
+        
+        stage('Frontend Build') {
+            steps {
+                dir('mobile') {
+                    sh '''
+                        npm install
+                        npm run test:ci
+                        npm run build:web
+                    '''
+                }
+            }
+        }
 
         stage('Docker Build') {
             steps {
@@ -51,6 +63,8 @@ pipeline {
                     docker build -t gateway-service -f docker/gateway/Dockerfile .
 
                     docker build -t notification-service -f docker/notification/Dockerfile .
+
+                    docker build -t mobile-web -f docker/mobile/Dockerfile .
                 '''
             }
         }
@@ -72,6 +86,9 @@ pipeline {
 
                     kubectl apply -f k8s/dev/notification/deployment.yaml
                     kubectl apply -f k8s/dev/notification/service.yaml
+
+                    kubectl apply -f k8s/dev/mobile/deployment.yaml
+                    kubectl apply -f k8s/dev/mobile/service.yaml
                 '''
             }
         }
