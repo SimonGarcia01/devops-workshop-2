@@ -7,6 +7,7 @@ plugins {
 }
 
 dependencies {
+
     implementation(platform("org.springframework.boot:spring-boot-dependencies:3.2.4"))
     testImplementation(platform("org.springframework.boot:spring-boot-dependencies:3.2.4"))
 
@@ -19,24 +20,23 @@ dependencies {
     implementation("com.github.ben-manes.caffeine:caffeine")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-security")
+
     implementation("io.jsonwebtoken:jjwt-api:0.11.5")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
+
     implementation("org.flywaydb:flyway-core")
     runtimeOnly("org.postgresql:postgresql")
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+
     testImplementation(platform("org.testcontainers:testcontainers-bom:1.20.6"))
 
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:neo4j")
-}
 
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group == "org.testcontainers") {
-            useVersion("1.20.6")
-        }
-    }
+    testRuntimeOnly("com.h2database:h2")
 }
