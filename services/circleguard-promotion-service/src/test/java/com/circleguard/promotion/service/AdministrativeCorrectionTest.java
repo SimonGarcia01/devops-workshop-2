@@ -14,7 +14,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.containers.Neo4jContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 
@@ -29,10 +28,6 @@ public class AdministrativeCorrectionTest {
     static Neo4jContainer<?> neo4j = new Neo4jContainer<>("neo4j:5.12")
         .withAdminPassword("password");
 
-    @Container
-    static PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:16");
-            
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
 
@@ -40,9 +35,6 @@ public class AdministrativeCorrectionTest {
         registry.add("spring.neo4j.authentication.username", () -> "neo4j");
         registry.add("spring.neo4j.authentication.password", () -> "password");
 
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
     }
 
     @Autowired

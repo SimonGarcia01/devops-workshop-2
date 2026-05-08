@@ -5,6 +5,22 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  datasource:
+    url: jdbc:h2:mem:promotion_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+      - org.springframework.boot.autoconfigure.kafka.KafkaReactiveAutoConfiguration
 
   kafka:
-    bootstrap-servers: dummy:9092
+    bootstrap-servers: localhost:9092
+    listener:
+      auto-startup: false
