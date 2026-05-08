@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-service
+  namespace: dev
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: gateway-service
+
+  template:
+    metadata:
+      labels:
+        app: gateway-service
+
+    spec:
+      containers:
+        - name: gateway-service
+          image: gateway-service:latest
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8087
+
+          env:
+            - name: SPRING_DATA_REDIS_HOST
+              value: host.docker.internal
+
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"
+
+            - name: JWT_SECRET
+              value: "my-super-secret-dev-key-32-chars-long-12345678"
+
+            - name: QR_SECRET
+              value: "my-qr-secret-key-for-dev-1234567890"
