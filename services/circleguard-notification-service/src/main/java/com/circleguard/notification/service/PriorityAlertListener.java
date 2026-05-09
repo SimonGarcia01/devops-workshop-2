@@ -19,7 +19,7 @@ public class PriorityAlertListener {
 
     private final ObjectMapper objectMapper;
     private final TemplateService templateService;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     @Value("${auth.api.url:http://circleguard-auth-service:8080}")
     private String authApiUrl;
