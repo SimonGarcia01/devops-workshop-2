@@ -26,14 +26,14 @@ spec:
             - containerPort: 8087
 
           env:
-            - name: SPRING_DATA_REDIS_HOST
-              value: host.docker.internal
+            - name: REDIS_HOST
+              value: redis-service
 
-            - name: SPRING_DATA_REDIS_PORT
+            - name: REDIS_PORT
               value: "6379"
 
             - name: JWT_SECRET
-              value: "my-super-secret-dev-key-32-chars-long-12345678"
+              value: "this-is-a-super-long-gateway-secret-key-for-testing-123456789"
 
-            - name: QR_SECRET
-              value: "my-qr-secret-key-for-dev-1234567890"
+            - name: JWT_EXPIRATION
+              value: "3600000"

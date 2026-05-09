@@ -1,22 +1,26 @@
 spring:
   application:
     name: circleguard-promotion-service
+
   datasource:
     url: jdbc:postgresql://postgres-service:5432/circle_guard
     username: admin
     password: password
     driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
   neo4j:
     uri: bolt://neo4j-service:7687
     authentication:
       username: neo4j
       password: password
+
   kafka:
     bootstrap-servers: kafka-service:9092
     consumer:
@@ -26,6 +30,7 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
+
   data:
     redis:
       host: redis-service

@@ -1,18 +1,19 @@
 spring:
   application:
     name: circleguard-gateway-service
+
   data:
     redis:
-      host: localhost
-      port: 6379
-
-jwt:
-  secret: "this-is-a-super-long-gateway-secret-key-for-testing-123456789"
-  expiration: 3600000
-
-qr:
-  secret: "this-is-a-super-long-qr-secret-key-for-testing-123456789"
-  expiration: 300
+      host: ${REDIS_HOST:redis-service}
+      port: ${REDIS_PORT:6379}
 
 server:
   port: 8087
+
+jwt:
+  secret: ${JWT_SECRET:this-is-a-super-long-gateway-secret-key-for-testing-123456789}
+  expiration: ${JWT_EXPIRATION:3600000}
+
+qr:
+  secret: ${QR_SECRET:this-is-a-super-long-qr-secret-key-for-testing-123456789}
+  expiration: ${QR_EXPIRATION:300}
