@@ -28,3 +28,24 @@ spec:
           env:
             - name: AUTH_API_URL
               value: http://auth-service:8180
+
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: kafka-service:9092
+
+            - name: MAIL_HOST
+              value: dummy
+
+            - name: MAIL_PORT
+              value: "0"
+
+            - name: JWT_SECRET
+              value: "my-super-secret-dev-key-32-chars-long-12345678"
+
+            - name: JWT_EXPIRATION
+              value: "3600000"
+
+            - name: QR_SECRET
+              value: "this-is-a-super-long-notification-qr-secret-123456"
+
+            - name: QR_EXPIRATION
+              value: "300"

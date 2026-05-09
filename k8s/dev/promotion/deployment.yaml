@@ -1,17 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: promotion-service
   namespace: dev
+
 spec:
   replicas: 1
+
   selector:
     matchLabels:
       app: promotion-service
+
   template:
     metadata:
       labels:
         app: promotion-service
+
     spec:
       containers:
         - name: promotion-service
@@ -22,8 +27,17 @@ spec:
             - containerPort: 8088
 
           env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres-service:5432/circle_guard
+
+            - name: SPRING_DATASOURCE_USERNAME
+              value: admin
+
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: password
+
             - name: SPRING_NEO4J_URI
-              value: bolt://host.docker.internal:7687
+              value: bolt://neo4j-service:7687
 
             - name: SPRING_NEO4J_AUTHENTICATION_USERNAME
               value: neo4j
@@ -32,10 +46,16 @@ spec:
               value: password
 
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
-              value: host.docker.internal:9092
+              value: kafka-service:9092
 
             - name: SPRING_DATA_REDIS_HOST
-              value: host.docker.internal
+              value: redis-service
 
             - name: SPRING_DATA_REDIS_PORT
               value: "6379"
+
+            - name: JWT_SECRET
+              value: "my-super-secret-dev-key-32-chars-long-12345678"
+
+            - name: JWT_EXPIRATION
+              value: "3600000"

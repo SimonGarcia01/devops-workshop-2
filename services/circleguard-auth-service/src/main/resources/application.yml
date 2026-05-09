@@ -16,7 +16,7 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   ldap:
-    urls: ldap://host.docker.internal:389
+    urls: ldap://ldap-service:389
     base: dc=circleguard,dc=edu
     username: cn=admin,dc=circleguard,dc=edu
     password: admin

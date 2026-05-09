@@ -3,42 +3,46 @@ spring:
     name: circleguard-promotion-service
 
   datasource:
-    url: jdbc:postgresql://postgres-service:5432/circle_guard
-    username: admin
-    password: password
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres-service:5432/circle_guard}
+    username: ${SPRING_DATASOURCE_USERNAME:admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
+
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   neo4j:
-    uri: bolt://neo4j-service:7687
+    uri: ${SPRING_NEO4J_URI:bolt://neo4j-service:7687}
+
     authentication:
-      username: neo4j
-      password: password
+      username: ${SPRING_NEO4J_AUTHENTICATION_USERNAME:neo4j}
+      password: ${SPRING_NEO4J_AUTHENTICATION_PASSWORD:password}
 
   kafka:
-    bootstrap-servers: kafka-service:9092
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka-service:9092}
+
     consumer:
       group-id: promotion-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
       properties:
         spring.json.trusted.packages: "*"
 
   data:
     redis:
-      host: redis-service
-      port: 6379
+      host: ${SPRING_DATA_REDIS_HOST:redis-service}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
 
 server:
   port: 8088
 
 jwt:
-  secret: "my-super-secret-dev-key-32-chars-long-12345678"
-  expiration: 3600000
+  secret: ${JWT_SECRET:my-super-secret-dev-key-32-chars-long-12345678}
+  expiration: ${JWT_EXPIRATION:3600000}

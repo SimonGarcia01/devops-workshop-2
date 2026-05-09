@@ -26,5 +26,26 @@ spec:
             - containerPort: 8083
 
           env:
-            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
-              value: host.docker.internal:9092
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres-service:5432/circle_guard
+
+            - name: SPRING_DATASOURCE_USERNAME
+              value: admin
+
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: password
+
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: kafka-service:9092
+
+            - name: VAULT_SECRET
+              value: "746573742d7365637265742d33322d63686172732d6c6f6e672d313233343536"
+
+            - name: VAULT_SALT
+              value: "deadbeef"
+
+            - name: VAULT_HASH_SALT
+              value: "12345678"
+
+            - name: JWT_SECRET
+              value: "1234567890123456789012345678901234567890123456789012345678901234"

@@ -3,19 +3,58 @@ kind: Deployment
 metadata:
   name: auth-service
   namespace: dev
+
 spec:
   replicas: 1
+
   selector:
     matchLabels:
       app: auth-service
+
   template:
     metadata:
       labels:
         app: auth-service
+
     spec:
       containers:
         - name: auth-service
           image: simongarcia01/auth-service:latest
           imagePullPolicy: Always
+
           ports:
             - containerPort: 8180
+
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres-service:5432/circle_guard
+
+            - name: SPRING_DATASOURCE_USERNAME
+              value: admin
+
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: password
+
+            - name: SPRING_LDAP_URLS
+              value: ldap://ldap-service:389
+
+            - name: SPRING_LDAP_BASE
+              value: dc=circleguard,dc=edu
+
+            - name: SPRING_LDAP_USERNAME
+              value: cn=admin,dc=circleguard,dc=edu
+
+            - name: SPRING_LDAP_PASSWORD
+              value: admin
+
+            - name: JWT_SECRET
+              value: "my-super-secret-dev-key-32-chars-long-12345678"
+
+            - name: JWT_EXPIRATION
+              value: "3600000"
+
+            - name: QR_SECRET
+              value: "my-qr-secret-key-for-dev-1234567890"
+
+            - name: QR_EXPIRATION
+              value: "300"
