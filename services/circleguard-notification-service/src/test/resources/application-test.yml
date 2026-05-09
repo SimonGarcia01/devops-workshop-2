@@ -1,0 +1,8 @@
+spring:
+  kafka:
+    listener:
+      auto-startup: false
+
+  mail:
+    host: dummy
+    port: 0
