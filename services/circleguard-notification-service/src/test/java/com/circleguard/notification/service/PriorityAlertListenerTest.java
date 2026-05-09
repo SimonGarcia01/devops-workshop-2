@@ -15,6 +15,8 @@ import org.springframework.web.client.RestTemplate;
 import java.util.List;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest
@@ -52,7 +54,9 @@ public class PriorityAlertListenerTest {
             Map.of("email", "admin@university.edu", "username", "admin1")
         );
         
-        when(restTemplate.getForObject("http://localhost:8080/api/v1/users/permissions/alert:receive_priority", List.class))
+        when(restTemplate.getForObject(
+            anyString(),
+            eq(List.class)))
             .thenReturn(mockAdmins);
 
         priorityAlertListener.handlePriorityAlert(message);
@@ -68,7 +72,9 @@ public class PriorityAlertListenerTest {
         when(objectMapper.readValue(eq(message), ArgumentMatchers.<com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>>any()))
             .thenReturn(payload);
 
-        when(restTemplate.getForObject("http://localhost:8080/api/v1/users/permissions/alert:receive_priority", List.class))
+        when(restTemplate.getForObject(
+            anyString(),
+            eq(List.class)))
             .thenReturn(null);
 
         priorityAlertListener.handlePriorityAlert(message);
