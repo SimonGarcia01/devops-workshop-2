@@ -25,7 +25,7 @@ spec:
             - containerPort: 5432
           env:
             - name: POSTGRES_DB
-              value: circleguard
+              value: circle_guard
             - name: POSTGRES_USER
               value: admin
             - name: POSTGRES_PASSWORD
