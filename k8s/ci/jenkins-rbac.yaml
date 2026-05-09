@@ -17,6 +17,7 @@ rules:
       - services
       - deployments
       - replicasets
+      - configmaps
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
 ---
