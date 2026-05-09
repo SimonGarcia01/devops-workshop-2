@@ -9,14 +9,8 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
   mail:
-    host: localhost
-    port: 25
-    properties:
-      mail:
-        smtp:
-          auth: false
-          starttls:
-            enable: false
+    host: dummy
+    port: 0
 
 auth:
   api:
@@ -27,7 +21,7 @@ jwt:
   expiration: 3600000
 
 qr:
-  secret: "my-qr-secret-key-for-dev-1234567890"
+  secret: "this-is-a-super-long-notification-qr-secret-123456"
   expiration: 300
 
 server:
