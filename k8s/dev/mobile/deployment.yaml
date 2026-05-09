@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
         - name: mobile-web
-          image: mobile-web:latest
-          imagePullPolicy: Never
+          image: simongarcia01/mobile-web:latest
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 80

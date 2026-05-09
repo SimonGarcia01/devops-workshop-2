@@ -15,8 +15,8 @@ spec:
     spec:
       containers:
         - name: promotion-service
-          image: promotion-service
-          imagePullPolicy: Never
+          image: simongarcia01/promotion-service:latest
+          imagePullPolicy: Always
 
           ports:
             - containerPort: 8088

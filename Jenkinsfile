@@ -54,17 +54,18 @@ pipeline {
         stage('Docker Build') {
             steps {
                 sh '''
-                    docker build -t auth-service -f docker/auth/Dockerfile .
-
-                    docker build -t identity-service -f docker/identity/Dockerfile .
-
-                    docker build -t promotion-service -f docker/promotion/Dockerfile .
-
-                    docker build -t gateway-service -f docker/gateway/Dockerfile .
-
-                    docker build -t notification-service -f docker/notification/Dockerfile .
-
-                    docker build -t mobile-web -f docker/mobile/Dockerfile .
+                    docker build -t simongarcia01/auth-service:latest -f docker/auth/Dockerfile .
+                    docker push simongarcia01/auth-service:latest
+                    docker build -t simongarcia01/identity-service:latest -f docker/identity/Dockerfile .
+                    docker push simongarcia01/identity-service:latest
+                    docker build -t simongarcia01/promotion-service:latest -f docker/promotion/Dockerfile .
+                    docker push simongarcia01/promotion-service:latest
+                    docker build -t simongarcia01/gateway-service:latest -f docker/gateway/Dockerfile .
+                    docker push simongarcia01/gateway-service:latest
+                    docker build -t simongarcia01/notification-service:latest -f docker/notification/Dockerfile .
+                    docker push simongarcia01/notification-service:latest
+                    docker build -t simongarcia01/mobile-web:latest -f docker/mobile/Dockerfile .
+                    docker push simongarcia01/mobile-web:latest
                 '''
             }
         }
