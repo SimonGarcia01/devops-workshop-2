@@ -50,7 +50,7 @@ pipeline {
                 }
             }
         }
-
+/**
         stage('Docker Build') {
             steps {
                 sh '''
@@ -69,7 +69,7 @@ pipeline {
                 '''
             }
         }
-
+**/
     stage('Deploy Infra') {
         steps {
             sh '''

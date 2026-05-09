@@ -1,0 +1,3 @@
+CREATE DATABASE auth_db;
+CREATE DATABASE identity_db;
+CREATE DATABASE promotion_db;

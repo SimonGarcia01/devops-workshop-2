@@ -3,10 +3,13 @@ spring:
     name: circleguard-promotion-service
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres-service:5432/circle_guard}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres-service:5432/promotion_db}
     username: ${SPRING_DATASOURCE_USERNAME:admin}
     password: ${SPRING_DATASOURCE_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
+
+  flyway:
+    table: flyway_schema_history_promotion
 
   jpa:
     hibernate:

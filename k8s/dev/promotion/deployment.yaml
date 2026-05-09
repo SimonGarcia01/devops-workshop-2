@@ -28,7 +28,7 @@ spec:
 
           env:
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://postgres-service:5432/circle_guard
+              value: jdbc:postgresql://postgres-service:5432/promotion_db
 
             - name: SPRING_DATASOURCE_USERNAME
               value: admin

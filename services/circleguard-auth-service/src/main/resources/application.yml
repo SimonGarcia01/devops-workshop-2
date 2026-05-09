@@ -3,7 +3,7 @@ spring:
     name: circleguard-auth-service
 
   datasource:
-    url: jdbc:postgresql://postgres-service:5432/circle_guard
+    url: jdbc:postgresql://postgres-service:5432/auth_db
     username: admin
     password: password
     driver-class-name: org.postgresql.Driver
@@ -20,6 +20,9 @@ spring:
     base: dc=circleguard,dc=edu
     username: cn=admin,dc=circleguard,dc=edu
     password: admin
+
+  flyway:
+    table: flyway_schema_history_auth
 
 jwt:
   secret: "my-super-secret-dev-key-32-chars-long-12345678"
