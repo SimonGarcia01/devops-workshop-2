@@ -26,14 +26,5 @@ spec:
             - containerPort: 8083
 
           env:
-            - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://host.docker.internal:5432/circleguard_identity
-
-            - name: SPRING_DATASOURCE_USERNAME
-              value: admin
-
-            - name: SPRING_DATASOURCE_PASSWORD
-              value: password
-
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: host.docker.internal:9092

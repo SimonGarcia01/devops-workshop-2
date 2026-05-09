@@ -70,6 +70,26 @@ pipeline {
             }
         }
 
+    stage('Deploy Infra') {
+        steps {
+            sh '''
+                kubectl apply -f k8s/dev/postgres/postgres.yaml
+                kubectl apply -f k8s/dev/neo4j/neo4j.yaml
+                kubectl apply -f k8s/dev/zookeeper/zookeeper.yaml
+                kubectl apply -f k8s/dev/kafka/kafka.yaml
+                kubectl apply -f k8s/dev/redis/redis.yaml
+            '''
+
+            sh '''
+                kubectl rollout status deployment/postgres -n dev
+                kubectl rollout status deployment/neo4j -n dev
+                kubectl rollout status deployment/zookeeper -n dev
+                kubectl rollout status deployment/kafka -n dev
+                kubectl rollout status deployment/redis -n dev
+            '''
+        }
+    }
+
         stage('Deploy to Dev') {
             steps {
                 sh '''
@@ -90,6 +110,8 @@ pipeline {
 
                     kubectl apply -f k8s/dev/mobile/deployment.yaml
                     kubectl apply -f k8s/dev/mobile/service.yaml
+
+                    kubectl rollout restart deployment -n dev
                 '''
             }
         }

@@ -13,12 +13,12 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   neo4j:
-    uri: bolt://localhost:7687
+    uri: bolt://neo4j-service:7687
     authentication:
       username: neo4j
       password: password
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: kafka-service:9092
     consumer:
       group-id: promotion-service-group
       auto-offset-reset: earliest
@@ -28,7 +28,7 @@ spring:
         spring.json.trusted.packages: "*"
   data:
     redis:
-      host: localhost
+      host: redis-service
       port: 6379
 
 server:
