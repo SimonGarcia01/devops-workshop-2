@@ -1,0 +1,7 @@
+jwt:
+  secret: this-is-a-very-long-test-secret-key-for-jwt-signing-123456789
+  expiration: 3600000
+
+qr:
+  secret: my-super-secret-test-key-32-chars-long
+  expiration: 300

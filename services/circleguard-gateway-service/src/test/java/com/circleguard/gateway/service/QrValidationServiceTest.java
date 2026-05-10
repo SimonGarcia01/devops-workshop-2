@@ -65,4 +65,16 @@ public class QrValidationServiceTest {
         assertFalse(result.valid());
         assertEquals("RED", result.status());
     }
+
+    @Test
+    void shouldRejectInvalidToken() {
+
+        String invalidToken = "this-is-not-a-valid-jwt";
+
+        QrValidationService.ValidationResult result =
+                service.validateToken(invalidToken);
+
+        assertFalse(result.valid());
+        assertEquals("RED", result.status());
+    }
 }
