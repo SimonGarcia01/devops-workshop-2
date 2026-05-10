@@ -78,6 +78,7 @@ pipeline {
                 kubectl apply -f k8s/dev/zookeeper/zookeeper.yaml
                 kubectl apply -f k8s/dev/kafka/kafka.yaml
                 kubectl apply -f k8s/dev/redis/redis.yaml
+                kubectl apply -f k8s/dev/ldap/ldap.yaml
             '''
 
             sh '''
@@ -86,6 +87,7 @@ pipeline {
                 kubectl rollout status deployment/zookeeper -n dev
                 kubectl rollout status deployment/kafka -n dev
                 kubectl rollout status deployment/redis -n dev
+                kubectl rollout status deployment/ldap -n dev
             '''
         }
     }

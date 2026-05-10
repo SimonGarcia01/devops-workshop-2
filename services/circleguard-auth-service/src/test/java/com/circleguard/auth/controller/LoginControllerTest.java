@@ -12,6 +12,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.web.servlet.MockMvc;
@@ -43,7 +44,6 @@ public class LoginControllerTest {
     @Test
     void shouldLoginSuccessfullyAndReturnAnonymizedToken() throws Exception {
         String username = "testuser";
-        String password = "password123";
         UUID anonymousId = UUID.randomUUID();
         String token = "mock-jwt-token";
 
@@ -64,4 +64,22 @@ public class LoginControllerTest {
                 .andExpect(jsonPath("$.anonymousId").value(anonymousId.toString()))
                 .andExpect(jsonPath("$.type").value("Bearer"));
     }
+
+        @Test
+        void shouldReturn401WhenCredentialsAreInvalid() throws Exception {
+                Mockito.when(authManager.authenticate(Mockito.any()))
+                .thenThrow(new BadCredentialsException("Invalid credentials"));
+
+                String requestBody = """
+                {
+                        "username":"bad",
+                        "password":"bad"
+                }
+                """;
+
+                mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                        .andExpect(status().isUnauthorized());
+        }
 }
