@@ -81,4 +81,24 @@ class FloorServiceTest {
         assertEquals(oldUrl, updated.getFloorPlanUrl());
         verify(floorRepository).save(floor);
     }
+
+    @Test
+void updateFloor_ShouldThrowException_WhenFloorDoesNotExist() {
+
+    UUID floorId = UUID.randomUUID();
+
+    when(floorRepository.findById(floorId))
+            .thenReturn(Optional.empty());
+
+    assertThrows(RuntimeException.class, () ->
+            floorService.updateFloor(
+                    floorId,
+                    2,
+                    "Updated Name",
+                    "http://new.url"
+            )
+    );
+
+    verify(floorRepository, never()).save(any());
+}
 }
