@@ -65,8 +65,23 @@ pipeline {
                     docker build -t simongarcia01/notification-service:latest -f docker/notification/Dockerfile .
                     docker push simongarcia01/notification-service:latest
                     docker build -t simongarcia01/mobile-web:latest -f docker/mobile/Dockerfile .
-                    docker push simongarcia01/mobile-web:latest
                 '''
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push simongarcia01/auth-service:latest
+                    '''
+                }
             }
         }
 
