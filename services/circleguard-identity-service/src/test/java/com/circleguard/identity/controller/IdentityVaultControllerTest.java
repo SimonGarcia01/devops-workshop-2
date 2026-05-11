@@ -11,6 +11,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 import org.springframework.kafka.core.KafkaTemplate;
 
+import org.springframework.http.MediaType;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -83,5 +86,29 @@ class IdentityVaultControllerTest {
 
         // Verify Kafka event was emitted even on failure
         verify(kafkaTemplate).send(eq("audit.identity.accessed"), any());
+    }
+
+    @Test
+    void registerVisitor_ReturnsAnonymousId() throws Exception {
+
+        UUID anonymousId = UUID.randomUUID();
+
+        when(vaultService.getOrCreateAnonymousId(any()))
+                .thenReturn(anonymousId);
+
+        String requestBody = """
+        {
+            "name":"John Visitor",
+            "email":"visitor@test.com",
+            "reason_for_visit":"Medical appointment"
+        }
+        """;
+
+        mockMvc.perform(post("/api/v1/identities/visitor")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.anonymousId")
+                        .value(anonymousId.toString()));
     }
 }

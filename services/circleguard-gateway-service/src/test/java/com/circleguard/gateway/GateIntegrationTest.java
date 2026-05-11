@@ -1,4 +1,4 @@
-package com.circleguard.gateway.controller;
+package com.circleguard.gateway;
 
 import java.util.UUID;
 

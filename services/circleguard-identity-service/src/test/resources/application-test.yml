@@ -1,6 +1,4 @@
 spring:
-  profiles:
-    active: test
   mvc:
     problemdetails:
       enabled: true
@@ -8,11 +6,13 @@ spring:
     url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
     driver-class-name: org.h2.Driver
     username: sa
-    password: password
+    password:
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: create-drop
+  flyway:
+    enabled: false
 
 jwt:
   secret: "this-is-a-super-long-development-secret-key-for-circle-guard-testing-123456789"
