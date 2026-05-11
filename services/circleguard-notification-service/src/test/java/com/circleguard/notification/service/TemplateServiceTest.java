@@ -43,4 +43,13 @@ public class TemplateServiceTest {
         assertThat(content).contains("SUSPECT");
         assertThat(content).contains("check your email");
     }
+
+    @Test
+void testPushMetadataForProbableStatus() {
+
+    var metadata = templateService.generatePushMetadata("PROBABLE");
+
+    assertThat(metadata)
+            .containsEntry("url", "circleguard://guidelines");
+}
 }
