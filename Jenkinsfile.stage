@@ -24,7 +24,7 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Run Tests') {
             steps {
                 sh '''
                     chmod +x gradlew
@@ -38,7 +38,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Frontend Build') {
             steps {
                 dir('mobile') {
@@ -66,6 +66,7 @@ pipeline {
 
         stage('Docker Push') {
             steps {
+
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-creds',
                     usernameVariable: 'DOCKER_USER',
@@ -74,6 +75,7 @@ pipeline {
 
                     sh '''
                         echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+
                         docker push simongarcia01/auth-service:latest
                         docker push simongarcia01/identity-service:latest
                         docker push simongarcia01/promotion-service:latest
@@ -85,8 +87,9 @@ pipeline {
             }
         }
 
-        stage('Deploy Infra') {
+        stage('Deploy Infrastructure') {
             steps {
+
                 sh '''
                     kubectl apply -f k8s/dev/postgres/postgres.yaml
                     kubectl apply -f k8s/dev/neo4j/neo4j.yaml
@@ -107,8 +110,9 @@ pipeline {
             }
         }
 
-        stage('Deploy to Dev') {
+        stage('Deploy to Stage') {
             steps {
+
                 sh '''
                     kubectl apply -f k8s/dev/auth/deployment.yaml
                     kubectl apply -f k8s/dev/auth/service.yaml
@@ -127,20 +131,44 @@ pipeline {
 
                     kubectl apply -f k8s/dev/mobile/deployment.yaml
                     kubectl apply -f k8s/dev/mobile/service.yaml
+                '''
 
-                    kubectl rollout restart deployment -n dev
+                sh '''
+                    kubectl rollout status deployment/auth-service -n dev
+                    kubectl rollout status deployment/identity-service -n dev
+                    kubectl rollout status deployment/promotion-service -n dev
+                    kubectl rollout status deployment/gateway-service -n dev
+                    kubectl rollout status deployment/notification-service -n dev
+                '''
+            }
+        }
+
+        stage('Stage Environment Tests') {
+            steps {
+
+                sh '''
+                    curl --fail http://localhost:30081/actuator/health
+                    curl --fail http://localhost:30083/actuator/health
+                    curl --fail http://localhost:30087/actuator/health
+                '''
+
+                sh '''
+                    curl -X POST http://localhost:30087/api/v1/gate/validate \
+                    -H "Content-Type: application/json" \
+                    -d '{"token":"invalid"}'
                 '''
             }
         }
     }
 
     post {
+
         success {
-            echo 'Pipeline completed successfully!'
+            echo 'Stage pipeline completed successfully!'
         }
 
         failure {
-            echo 'Pipeline failed!'
+            echo 'Stage pipeline failed!'
         }
     }
 }
