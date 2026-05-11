@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/identity_db
+    username: admin
+    password: password
+
+  flyway:
+    enabled: false
