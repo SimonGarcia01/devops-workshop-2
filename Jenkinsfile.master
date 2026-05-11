@@ -1,0 +1,153 @@
+pipeline {
+
+    agent any
+
+    environment {
+        RELEASE_FILE = "release-notes.txt"
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+
+                sh '''
+                    chmod +x gradlew
+
+                    ./gradlew clean build
+                '''
+            }
+        }
+
+        stage('Unit and Integration Tests') {
+            steps {
+
+                sh '''
+                    chmod +x gradlew
+
+                    ./gradlew test
+                '''
+            }
+        }
+
+        stage('Frontend Tests') {
+            steps {
+
+                dir('mobile') {
+
+                    sh '''
+                        npm install
+                        npm run test:ci
+                        npm run build:web
+                    '''
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+
+                sh '''
+                    docker build -t simongarcia01/auth-service:latest -f docker/auth/Dockerfile .
+                    docker build -t simongarcia01/identity-service:latest -f docker/identity/Dockerfile .
+                    docker build -t simongarcia01/promotion-service:latest -f docker/promotion/Dockerfile .
+                    docker build -t simongarcia01/gateway-service:latest -f docker/gateway/Dockerfile .
+                    docker build -t simongarcia01/notification-service:latest -f docker/notification/Dockerfile .
+                    docker build -t simongarcia01/mobile-web:latest -f docker/mobile/Dockerfile .
+                '''
+            }
+        }
+
+        stage('Docker Push') {
+
+            steps {
+
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+
+                    sh '''
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+
+                        docker push simongarcia01/auth-service:latest
+                        docker push simongarcia01/identity-service:latest
+                        docker push simongarcia01/promotion-service:latest
+                        docker push simongarcia01/gateway-service:latest
+                        docker push simongarcia01/notification-service:latest
+                        docker push simongarcia01/mobile-web:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+
+            steps {
+
+                sh '''
+                    kubectl apply -f k8s/dev/auth/
+                    kubectl apply -f k8s/dev/identity/
+                    kubectl apply -f k8s/dev/promotion/
+                    kubectl apply -f k8s/dev/gateway/
+                    kubectl apply -f k8s/dev/notification/
+                    kubectl apply -f k8s/dev/mobile/
+                '''
+
+                sh '''
+                    kubectl rollout status deployment/auth-service -n dev
+                    kubectl rollout status deployment/identity-service -n dev
+                    kubectl rollout status deployment/promotion-service -n dev
+                    kubectl rollout status deployment/gateway-service -n dev
+                    kubectl rollout status deployment/notification-service -n dev
+                '''
+            }
+        }
+
+        stage('System Tests') {
+
+            steps {
+
+                sh '''
+                    curl --fail http://localhost:30081/actuator/health
+                    curl --fail http://localhost:30083/actuator/health
+                    curl --fail http://localhost:30087/actuator/health
+                '''
+            }
+        }
+
+        stage('Generate Release Notes') {
+
+            steps {
+
+                sh '''
+                    echo "CircleGuard Release Notes" > $RELEASE_FILE
+                    echo "==========================" >> $RELEASE_FILE
+                    echo "" >> $RELEASE_FILE
+
+                    git log --pretty=format:"- %s (%an)" -10 >> $RELEASE_FILE
+                '''
+
+                archiveArtifacts artifacts: 'release-notes.txt'
+            }
+        }
+    }
+
+    post {
+
+        success {
+            echo 'Master pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'Master pipeline failed!'
+        }
+    }
+}
