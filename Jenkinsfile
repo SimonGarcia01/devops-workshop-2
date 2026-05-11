@@ -55,15 +55,10 @@ pipeline {
             steps {
                 sh '''
                     docker build -t simongarcia01/auth-service:latest -f docker/auth/Dockerfile .
-                    docker push simongarcia01/auth-service:latest
                     docker build -t simongarcia01/identity-service:latest -f docker/identity/Dockerfile .
-                    docker push simongarcia01/identity-service:latest
                     docker build -t simongarcia01/promotion-service:latest -f docker/promotion/Dockerfile .
-                    docker push simongarcia01/promotion-service:latest
                     docker build -t simongarcia01/gateway-service:latest -f docker/gateway/Dockerfile .
-                    docker push simongarcia01/gateway-service:latest
                     docker build -t simongarcia01/notification-service:latest -f docker/notification/Dockerfile .
-                    docker push simongarcia01/notification-service:latest
                     docker build -t simongarcia01/mobile-web:latest -f docker/mobile/Dockerfile .
                 '''
             }
@@ -85,27 +80,27 @@ pipeline {
             }
         }
 
-    stage('Deploy Infra') {
-        steps {
-            sh '''
-                kubectl apply -f k8s/dev/postgres/postgres.yaml
-                kubectl apply -f k8s/dev/neo4j/neo4j.yaml
-                kubectl apply -f k8s/dev/zookeeper/zookeeper.yaml
-                kubectl apply -f k8s/dev/kafka/kafka.yaml
-                kubectl apply -f k8s/dev/redis/redis.yaml
-                kubectl apply -f k8s/dev/ldap/ldap.yaml
-            '''
+        stage('Deploy Infra') {
+            steps {
+                sh '''
+                    kubectl apply -f k8s/dev/postgres/postgres.yaml
+                    kubectl apply -f k8s/dev/neo4j/neo4j.yaml
+                    kubectl apply -f k8s/dev/zookeeper/zookeeper.yaml
+                    kubectl apply -f k8s/dev/kafka/kafka.yaml
+                    kubectl apply -f k8s/dev/redis/redis.yaml
+                    kubectl apply -f k8s/dev/ldap/ldap.yaml
+                '''
 
-            sh '''
-                kubectl rollout status deployment/postgres -n dev
-                kubectl rollout status deployment/neo4j -n dev
-                kubectl rollout status deployment/zookeeper -n dev
-                kubectl rollout status deployment/kafka -n dev
-                kubectl rollout status deployment/redis -n dev
-                kubectl rollout status deployment/ldap -n dev
-            '''
+                sh '''
+                    kubectl rollout status deployment/postgres -n dev
+                    kubectl rollout status deployment/neo4j -n dev
+                    kubectl rollout status deployment/zookeeper -n dev
+                    kubectl rollout status deployment/kafka -n dev
+                    kubectl rollout status deployment/redis -n dev
+                    kubectl rollout status deployment/ldap -n dev
+                '''
+            }
         }
-    }
 
         stage('Deploy to Dev') {
             steps {
