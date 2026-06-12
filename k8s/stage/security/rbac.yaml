@@ -1,0 +1,160 @@
+# RBAC para namespace stage — mismo patrón que dev con ServiceAccounts por servicio.
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auth-service
+  namespace: stage
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: identity-service
+  namespace: stage
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gateway-service
+  namespace: stage
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: notification-service
+  namespace: stage
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promotion-service
+  namespace: stage
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dashboard-service
+  namespace: stage
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: form-service
+  namespace: stage
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: microservice-runtime
+  namespace: stage
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: auth-service-runtime
+  namespace: stage
+subjects:
+  - kind: ServiceAccount
+    name: auth-service
+    namespace: stage
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: identity-service-runtime
+  namespace: stage
+subjects:
+  - kind: ServiceAccount
+    name: identity-service
+    namespace: stage
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gateway-service-runtime
+  namespace: stage
+subjects:
+  - kind: ServiceAccount
+    name: gateway-service
+    namespace: stage
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: notification-service-runtime
+  namespace: stage
+subjects:
+  - kind: ServiceAccount
+    name: notification-service
+    namespace: stage
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: promotion-service-runtime
+  namespace: stage
+subjects:
+  - kind: ServiceAccount
+    name: promotion-service
+    namespace: stage
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dashboard-service-runtime
+  namespace: stage
+subjects:
+  - kind: ServiceAccount
+    name: dashboard-service
+    namespace: stage
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: form-service-runtime
+  namespace: stage
+subjects:
+  - kind: ServiceAccount
+    name: form-service
+    namespace: stage
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io

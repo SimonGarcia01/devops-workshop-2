@@ -1,3 +1,5 @@
 CREATE DATABASE auth_db;
 CREATE DATABASE identity_db;
 CREATE DATABASE promotion_db;
+CREATE DATABASE dashboard_db;
+CREATE DATABASE form_db;

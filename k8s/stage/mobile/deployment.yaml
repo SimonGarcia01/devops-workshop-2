@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mobile-web
+  namespace: stage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mobile-web
+  template:
+    metadata:
+      labels:
+        app: mobile-web
+    spec:
+      containers:
+        - name: mobile-web
+          image: simongarcia01/mobile-web:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"

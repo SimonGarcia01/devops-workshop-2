@@ -1,46 +1,91 @@
-pipeline {
+// Branch: main / master  →  despliega al namespace 'prod'
+// Usa tags estables (v1.x.x). Requiere aprobación manual antes del deploy.
+// Trivy falla en CRITICAL. Genera Release Notes automáticas.
 
+pipeline {
     agent any
 
     environment {
-        RELEASE_FILE = "release-notes.txt"
+        DOCKER_USER   = 'simongarcia01'
+        NAMESPACE     = 'prod'
+        SONAR_PROJECT = 'circleguard'
+        NOTIFY_EMAIL  = 'claudiaoponia@gmail.com'
+        RELEASE_FILE  = 'release-notes.md'
     }
 
     stages {
 
+        // ─────────────────────────────────────────────
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
+        // ─────────────────────────────────────────────
+        stage('Semantic Version (Stable)') {
+            steps {
+                script {
+                    def latestTag = sh(
+                        script: "git tag --sort=-v:refname | grep '^v' | head -1 || echo 'v0.0.0'",
+                        returnStdout: true
+                    ).trim()
+                    def parts = latestTag.replaceAll('^v', '').split('\\.')
+                    def major = parts[0]
+                    def minor = parts[1]
+                    // Auto-increment patch on each master build
+                    def patch = (parts[2] ?: '0').replaceAll('-.*', '').toInteger() + 1
+
+                    env.IMAGE_TAG  = "v${major}.${minor}.${patch}"
+                    env.GIT_TAG    = env.IMAGE_TAG
+                    echo "Stable release: ${env.IMAGE_TAG}"
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────
         stage('Build') {
             steps {
-
                 sh '''
                     chmod +x gradlew
-
-                    ./gradlew clean build
+                    ./gradlew clean \
+                        :services:circleguard-auth-service:build \
+                        :services:circleguard-identity-service:build \
+                        :services:circleguard-promotion-service:build \
+                        :services:circleguard-gateway-service:build \
+                        :services:circleguard-notification-service:build \
+                        :services:circleguard-dashboard-service:build \
+                        :services:circleguard-form-service:build \
+                        -x test
                 '''
             }
         }
 
-        stage('Unit and Integration Tests') {
+        // ─────────────────────────────────────────────
+        stage('Test') {
             steps {
-
                 sh '''
-                    chmod +x gradlew
-
-                    ./gradlew test
+                    ./gradlew \
+                        :services:circleguard-auth-service:test \
+                        :services:circleguard-identity-service:test \
+                        :services:circleguard-promotion-service:test \
+                        :services:circleguard-gateway-service:test \
+                        :services:circleguard-notification-service:test \
+                        :services:circleguard-dashboard-service:test \
+                        :services:circleguard-form-service:test
                 '''
+            }
+            post {
+                always {
+                    junit '**/build/test-results/test/*.xml'
+                }
             }
         }
 
-        stage('Frontend Tests') {
+        // ─────────────────────────────────────────────
+        stage('Frontend Build & Test') {
             steps {
-
                 dir('mobile') {
-
                     sh '''
                         npm install
                         npm run test:ci
@@ -50,104 +95,307 @@ pipeline {
             }
         }
 
-        stage('Docker Build') {
+        // ─────────────────────────────────────────────
+        stage('SonarQube Analysis') {
             steps {
-
-                sh '''
-                    docker build -t simongarcia01/auth-service:latest -f docker/auth/Dockerfile .
-                    docker build -t simongarcia01/identity-service:latest -f docker/identity/Dockerfile .
-                    docker build -t simongarcia01/promotion-service:latest -f docker/promotion/Dockerfile .
-                    docker build -t simongarcia01/gateway-service:latest -f docker/gateway/Dockerfile .
-                    docker build -t simongarcia01/notification-service:latest -f docker/notification/Dockerfile .
-                    docker build -t simongarcia01/mobile-web:latest -f docker/mobile/Dockerfile .
-                '''
-            }
-        }
-
-        stage('Docker Push') {
-
-            steps {
-
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-
-                    sh '''
-                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-
-                        docker push simongarcia01/auth-service:latest
-                        docker push simongarcia01/identity-service:latest
-                        docker push simongarcia01/promotion-service:latest
-                        docker push simongarcia01/gateway-service:latest
-                        docker push simongarcia01/notification-service:latest
-                        docker push simongarcia01/mobile-web:latest
-                    '''
+                withSonarQubeEnv('sonarqube') {
+                    sh """
+                        ./gradlew sonar \
+                            -Dsonar.projectKey=${SONAR_PROJECT} \
+                            -Dsonar.projectVersion=${IMAGE_TAG} \
+                            -Dsonar.branch.name=main
+                    """
                 }
             }
         }
 
-        stage('Deploy to Kubernetes') {
-
+        stage('Quality Gate') {
             steps {
-
-                sh '''
-                    kubectl apply -f k8s/dev/auth/
-                    kubectl apply -f k8s/dev/identity/
-                    kubectl apply -f k8s/dev/promotion/
-                    kubectl apply -f k8s/dev/gateway/
-                    kubectl apply -f k8s/dev/notification/
-                    kubectl apply -f k8s/dev/mobile/
-                '''
-
-                sh '''
-                    kubectl rollout status deployment/auth-service -n dev
-                    kubectl rollout status deployment/identity-service -n dev
-                    kubectl rollout status deployment/promotion-service -n dev
-                    kubectl rollout status deployment/gateway-service -n dev
-                    kubectl rollout status deployment/notification-service -n dev
-                '''
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
 
-        stage('System Tests') {
-
+        // ─────────────────────────────────────────────
+        stage('Docker Build') {
             steps {
-
-                sh '''
-                    curl --fail http://localhost:30081/actuator/health
-                    curl --fail http://localhost:30083/actuator/health
-                    curl --fail http://localhost:30087/actuator/health
-                '''
+                sh """
+                    docker build -t ${DOCKER_USER}/auth-service:${IMAGE_TAG}         -f docker/auth/Dockerfile .
+                    docker build -t ${DOCKER_USER}/identity-service:${IMAGE_TAG}     -f docker/identity/Dockerfile .
+                    docker build -t ${DOCKER_USER}/promotion-service:${IMAGE_TAG}    -f docker/promotion/Dockerfile .
+                    docker build -t ${DOCKER_USER}/gateway-service:${IMAGE_TAG}      -f docker/gateway/Dockerfile .
+                    docker build -t ${DOCKER_USER}/notification-service:${IMAGE_TAG} -f docker/notification/Dockerfile .
+                    docker build -t ${DOCKER_USER}/dashboard-service:${IMAGE_TAG}    -f docker/dashboard/Dockerfile .
+                    docker build -t ${DOCKER_USER}/form-service:${IMAGE_TAG}         -f docker/form/Dockerfile .
+                    docker build -t ${DOCKER_USER}/mobile-web:${IMAGE_TAG}           -f docker/mobile/Dockerfile .
+                """
             }
         }
 
+        // ─────────────────────────────────────────────
+        stage('Trivy Security Scan') {
+            steps {
+                script {
+                    def images = [
+                        'auth-service', 'identity-service', 'promotion-service',
+                        'gateway-service', 'notification-service',
+                        'dashboard-service', 'form-service', 'mobile-web'
+                    ]
+                    images.each { svc ->
+                        // Producción: falla en CRITICAL y HIGH
+                        sh """
+                            trivy image \
+                                --exit-code 1 \
+                                --severity HIGH,CRITICAL \
+                                --format table \
+                                --output trivy-${svc}-prod.txt \
+                                ${DOCKER_USER}/${svc}:${IMAGE_TAG}
+                        """
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-*-prod.txt', allowEmptyArchive: true
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_CRED_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh """
+                        echo \$DOCKER_PASS | docker login -u \$DOCKER_CRED_USER --password-stdin
+
+                        docker push ${DOCKER_USER}/auth-service:${IMAGE_TAG}
+                        docker push ${DOCKER_USER}/identity-service:${IMAGE_TAG}
+                        docker push ${DOCKER_USER}/promotion-service:${IMAGE_TAG}
+                        docker push ${DOCKER_USER}/gateway-service:${IMAGE_TAG}
+                        docker push ${DOCKER_USER}/notification-service:${IMAGE_TAG}
+                        docker push ${DOCKER_USER}/dashboard-service:${IMAGE_TAG}
+                        docker push ${DOCKER_USER}/form-service:${IMAGE_TAG}
+                        docker push ${DOCKER_USER}/mobile-web:${IMAGE_TAG}
+
+                        # Etiquetar como latest sólo en master
+                        for svc in auth-service identity-service promotion-service gateway-service \
+                                   notification-service dashboard-service form-service mobile-web; do
+                            docker tag ${DOCKER_USER}/\${svc}:${IMAGE_TAG} ${DOCKER_USER}/\${svc}:latest
+                            docker push ${DOCKER_USER}/\${svc}:latest
+                        done
+                    """
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        stage('E2E Tests') {
+            steps {
+                dir('tests/e2e') {
+                    sh '''
+                        pip install -r requirements.txt --quiet
+                        pytest . -v \
+                            --html=e2e-report.html \
+                            --self-contained-html \
+                            -o "junit_family=xunit2" \
+                            --junitxml=e2e-results.xml
+                    '''
+                }
+            }
+            post {
+                always {
+                    junit 'tests/e2e/e2e-results.xml'
+                    archiveArtifacts artifacts: 'tests/e2e/e2e-report.html', allowEmptyArchive: true
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        stage('Performance Tests (Locust)') {
+            steps {
+                dir('tests/performance') {
+                    sh '''
+                        pip install -r requirements.txt --quiet
+                        locust -f locustfile.py \
+                            --headless \
+                            --users 20 \
+                            --spawn-rate 5 \
+                            --run-time 60s \
+                            --host http://localhost \
+                            --html locust-report.html \
+                            --csv locust-stats \
+                            --exit-code-on-error 1
+                    '''
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'tests/performance/locust-report.html,tests/performance/locust-stats*.csv', allowEmptyArchive: true
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        stage('Security Tests (OWASP ZAP)') {
+            steps {
+                sh 'bash tests/security/zap-scan.sh baseline'
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'tests/security/zap-reports/*.html,tests/security/zap-reports/*.json', allowEmptyArchive: true
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────
         stage('Generate Release Notes') {
-
             steps {
+                sh """
+                    chmod +x scripts/generate-release-notes.sh
+                    PREV_TAG=\$(git tag --sort=-v:refname | grep '^v' | sed -n '2p' || true)
+                    DOCKER_USER=${DOCKER_USER} \
+                        ./scripts/generate-release-notes.sh ${IMAGE_TAG} "\${PREV_TAG}" ${RELEASE_FILE}
 
+                    # Antepone la nueva entrada al CHANGELOG.md del repositorio
+                    if [ -f CHANGELOG.md ]; then
+                        HEADER=\$(head -6 CHANGELOG.md)
+                        BODY=\$(tail -n +7 CHANGELOG.md)
+                        printf '%s\n\n%s\n\n%s\n' "\$HEADER" "\$(cat ${RELEASE_FILE})" "\$BODY" > CHANGELOG.md
+                    fi
+                """
+                archiveArtifacts artifacts: "${RELEASE_FILE}"
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        stage('Approval: Deploy to Production') {
+            steps {
+                timeout(time: 30, unit: 'MINUTES') {
+                    input(
+                        message: "¿Desplegar CircleGuard ${env.IMAGE_TAG} a PRODUCCIÓN?",
+                        submitter: 'admin,lead-dev',
+                        parameters: [
+                            string(
+                                name: 'APPROVED_BY',
+                                defaultValue: '',
+                                description: 'Nombre del aprobador'
+                            ),
+                            booleanParam(
+                                name: 'CONFIRMED',
+                                defaultValue: false,
+                                description: 'Confirmo que esta versión está lista para producción'
+                            )
+                        ]
+                    )
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        stage('Deploy Services (Prod)') {
+            steps {
+                sh """
+                    # Aplica secrets, RBAC e infra si no existen aún
+                    kubectl apply -f k8s/prod/security/secrets.yaml
+                    kubectl apply -f k8s/prod/security/rbac.yaml
+                    kubectl apply -f k8s/prod/postgres/postgres.yaml
+                    kubectl apply -f k8s/prod/redis/redis.yaml
+                    kubectl apply -f k8s/prod/zookeeper/zookeeper.yaml
+                    kubectl apply -f k8s/prod/kafka/kafka.yaml
+                    kubectl apply -f k8s/prod/neo4j/neo4j.yaml
+                    kubectl apply -f k8s/prod/ldap/ldap.yaml
+
+                    kubectl rollout status deployment/postgres  -n ${NAMESPACE} --timeout=90s
+                    kubectl rollout status deployment/kafka     -n ${NAMESPACE} --timeout=90s
+
+                    for svc in auth-service identity-service promotion-service gateway-service \
+                               notification-service dashboard-service form-service mobile; do
+                        kubectl set image deployment/\${svc} \${svc}=${DOCKER_USER}/\${svc}:${IMAGE_TAG} \
+                            -n ${NAMESPACE} --record || \
+                        kubectl apply -f k8s/prod/\${svc}/
+                    done
+
+                    kubectl rollout status deployment/auth-service         -n ${NAMESPACE} --timeout=180s
+                    kubectl rollout status deployment/identity-service     -n ${NAMESPACE} --timeout=180s
+                    kubectl rollout status deployment/gateway-service      -n ${NAMESPACE} --timeout=180s
+                    kubectl rollout status deployment/promotion-service    -n ${NAMESPACE} --timeout=180s
+                    kubectl rollout status deployment/notification-service -n ${NAMESPACE} --timeout=180s
+                    kubectl rollout status deployment/dashboard-service    -n ${NAMESPACE} --timeout=180s
+                    kubectl rollout status deployment/form-service         -n ${NAMESPACE} --timeout=180s
+                """
+            }
+        }
+
+        stage('Verify Production') {
+            steps {
                 sh '''
-                    echo "CircleGuard Release Notes" > $RELEASE_FILE
-                    echo "==========================" >> $RELEASE_FILE
-                    echo "" >> $RELEASE_FILE
-
-                    git log --pretty=format:"- %s (%an)" -10 >> $RELEASE_FILE
+                    sleep 15
+                    curl --fail --retry 5 --retry-delay 10 http://localhost:32081/actuator/health
+                    curl --fail --retry 5 --retry-delay 10 http://localhost:32083/actuator/health
+                    curl --fail --retry 5 --retry-delay 10 http://localhost:32087/actuator/health
+                    curl --fail --retry 5 --retry-delay 10 http://localhost:32084/actuator/health
                 '''
+            }
+        }
 
-                archiveArtifacts artifacts: 'release-notes.txt'
+        // ─────────────────────────────────────────────
+        stage('Tag Release in Git') {
+            steps {
+                sh """
+                    git config user.email "jenkins@circleguard.edu"
+                    git config user.name  "Jenkins CI"
+                    git add CHANGELOG.md || true
+                    git commit -m "chore(release): update CHANGELOG for ${IMAGE_TAG} [skip ci]" || true
+                    git tag -a ${IMAGE_TAG} -m "Release ${IMAGE_TAG} — build #${env.BUILD_NUMBER}"
+                    git push origin ${IMAGE_TAG}
+                    git push origin HEAD:main || true
+                """
             }
         }
     }
 
+    // ─────────────────────────────────────────────
     post {
-
         success {
-            echo 'Master pipeline completed successfully!'
-        }
+            emailext(
+                subject: "🚀 DEPLOYED: CircleGuard ${env.IMAGE_TAG} en PRODUCCIÓN",
+                body: """
+CircleGuard ${env.IMAGE_TAG} fue desplegado exitosamente a producción.
 
+Build:   #${env.BUILD_NUMBER}
+Consola: ${env.BUILD_URL}
+
+Ver release notes adjuntas.
+                """.stripIndent(),
+                attachmentsPattern: "${env.RELEASE_FILE}",
+                to: "${env.NOTIFY_EMAIL}"
+            )
+        }
         failure {
-            echo 'Master pipeline failed!'
+            emailext(
+                subject: "❌ FAILED: Pipeline PROD ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """
+El pipeline de producción falló.
+
+Job:     ${env.JOB_NAME}
+Build:   #${env.BUILD_NUMBER}
+Versión: ${env.IMAGE_TAG}
+
+⚠️  El despliegue a producción NO se completó.
+
+Consola: ${env.BUILD_URL}console
+                """.stripIndent(),
+                to: "${env.NOTIFY_EMAIL}"
+            )
+        }
+        always {
+            archiveArtifacts artifacts: "${env.RELEASE_FILE}", allowEmptyArchive: true
+            cleanWs()
         }
     }
 }

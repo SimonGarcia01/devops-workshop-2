@@ -1,0 +1,281 @@
+# RBAC — Control de acceso basado en roles para CircleGuard (namespace dev).
+# Principio de mínimo privilegio: cada servicio tiene su propio ServiceAccount
+# con permisos limitados a leer sus propios Secrets y ConfigMaps.
+# Prometheus tiene ClusterRole para descubrimiento de targets de scraping.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ServiceAccounts — uno por microservicio
+# ─────────────────────────────────────────────────────────────────────────────
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auth-service
+  namespace: dev
+  labels:
+    app.kubernetes.io/part-of: circleguard
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: identity-service
+  namespace: dev
+  labels:
+    app.kubernetes.io/part-of: circleguard
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gateway-service
+  namespace: dev
+  labels:
+    app.kubernetes.io/part-of: circleguard
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: notification-service
+  namespace: dev
+  labels:
+    app.kubernetes.io/part-of: circleguard
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promotion-service
+  namespace: dev
+  labels:
+    app.kubernetes.io/part-of: circleguard
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dashboard-service
+  namespace: dev
+  labels:
+    app.kubernetes.io/part-of: circleguard
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: form-service
+  namespace: dev
+  labels:
+    app.kubernetes.io/part-of: circleguard
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Role — permisos mínimos para microservicios en tiempo de ejecución
+# ─────────────────────────────────────────────────────────────────────────────
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: microservice-runtime
+  namespace: dev
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+
+---
+# RoleBindings — cada SA hereda los permisos mínimos de microservice-runtime
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: auth-service-runtime
+  namespace: dev
+subjects:
+  - kind: ServiceAccount
+    name: auth-service
+    namespace: dev
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: identity-service-runtime
+  namespace: dev
+subjects:
+  - kind: ServiceAccount
+    name: identity-service
+    namespace: dev
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gateway-service-runtime
+  namespace: dev
+subjects:
+  - kind: ServiceAccount
+    name: gateway-service
+    namespace: dev
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: notification-service-runtime
+  namespace: dev
+subjects:
+  - kind: ServiceAccount
+    name: notification-service
+    namespace: dev
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: promotion-service-runtime
+  namespace: dev
+subjects:
+  - kind: ServiceAccount
+    name: promotion-service
+    namespace: dev
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dashboard-service-runtime
+  namespace: dev
+subjects:
+  - kind: ServiceAccount
+    name: dashboard-service
+    namespace: dev
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: form-service-runtime
+  namespace: dev
+subjects:
+  - kind: ServiceAccount
+    name: form-service
+    namespace: dev
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Prometheus — ClusterRole para descubrimiento de targets (pod/service scraping)
+# ─────────────────────────────────────────────────────────────────────────────
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: dev
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-scraper
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/proxy
+      - nodes/metrics
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions", "networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-scraper-binding
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: dev
+roleRef:
+  kind: ClusterRole
+  name: prometheus-scraper
+  apiGroup: rbac.authorization.k8s.io
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ServiceAccount para CronJob de Trivy (necesita listar pods e imágenes)
+# ─────────────────────────────────────────────────────────────────────────────
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: trivy-scanner
+  namespace: dev
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: trivy-pod-reader
+  namespace: dev
+rules:
+  - apiGroups: ["", "apps"]
+    resources: ["pods", "deployments", "replicasets"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: trivy-scanner-binding
+  namespace: dev
+subjects:
+  - kind: ServiceAccount
+    name: trivy-scanner
+    namespace: dev
+roleRef:
+  kind: Role
+  name: trivy-pod-reader
+  apiGroup: rbac.authorization.k8s.io

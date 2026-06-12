@@ -5,19 +5,23 @@ metadata:
   namespace: ci
 
 ---
+# Role para el namespace dev
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: jenkins-deployer
   namespace: dev
 rules:
-  - apiGroups: ["", "apps", "extensions"]
+  - apiGroups: ["", "apps", "extensions", "batch"]
     resources:
       - pods
+      - pods/log
       - services
       - deployments
       - replicasets
       - configmaps
+      - jobs
+      - cronjobs
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 
 ---
@@ -26,6 +30,75 @@ kind: RoleBinding
 metadata:
   name: jenkins-deployer-binding
   namespace: dev
+subjects:
+  - kind: ServiceAccount
+    name: jenkins
+    namespace: ci
+roleRef:
+  kind: Role
+  name: jenkins-deployer
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Role para el namespace stage
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jenkins-deployer
+  namespace: stage
+rules:
+  - apiGroups: ["", "apps", "extensions", "batch"]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - deployments
+      - replicasets
+      - configmaps
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jenkins-deployer-binding
+  namespace: stage
+subjects:
+  - kind: ServiceAccount
+    name: jenkins
+    namespace: ci
+roleRef:
+  kind: Role
+  name: jenkins-deployer
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Role para el namespace prod
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jenkins-deployer
+  namespace: prod
+rules:
+  - apiGroups: ["", "apps", "extensions", "batch"]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - deployments
+      - replicasets
+      - configmaps
+      - jobs
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jenkins-deployer-binding
+  namespace: prod
 subjects:
   - kind: ServiceAccount
     name: jenkins
