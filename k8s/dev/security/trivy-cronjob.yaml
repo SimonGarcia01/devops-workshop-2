@@ -1,0 +1,142 @@
+# Escaneo continuo de vulnerabilidades — CronJob diario con Trivy.
+# Complementa el escaneo en CI/CD (Jenkinsfiles) con escaneo en runtime.
+# Resultados van a stdout → capturados por ELK (logstash-service:5000).
+#
+# Ejecutar manualmente: kubectl create job trivy-manual --from=cronjob/trivy-image-scanner -n dev
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trivy-image-scanner
+  namespace: dev
+  labels:
+    app.kubernetes.io/part-of: circleguard
+    app.kubernetes.io/component: security
+spec:
+  schedule: "0 2 * * *"       # Diariamente a las 2:00 AM
+  concurrencyPolicy: Forbid    # No iniciar si el anterior aún corre
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: trivy-scanner
+        spec:
+          serviceAccountName: trivy-scanner
+          restartPolicy: OnFailure
+          initContainers:
+            # Espera a que la BD de vulnerabilidades de Trivy esté disponible
+            - name: trivy-db-download
+              image: aquasec/trivy:0.50.0
+              command: ["trivy", "image", "--download-db-only"]
+              volumeMounts:
+                - name: trivy-cache
+                  mountPath: /root/.cache/trivy
+          containers:
+            - name: trivy-scanner
+              image: aquasec/trivy:0.50.0
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  echo "=== CircleGuard Trivy Image Scan — $(date -Iseconds) ==="
+
+                  # Lista de imágenes desplegadas en CircleGuard
+                  IMAGES=$(kubectl get pods -n dev \
+                    -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}' \
+                    | sort -u | grep -v "^$")
+
+                  EXIT_CODE=0
+                  for IMAGE in $IMAGES; do
+                    echo ""
+                    echo "--- Scanning: $IMAGE ---"
+                    trivy image \
+                      --cache-dir /root/.cache/trivy \
+                      --format json \
+                      --severity HIGH,CRITICAL \
+                      --exit-code 0 \
+                      --no-progress \
+                      "$IMAGE" 2>&1 || EXIT_CODE=1
+                  done
+
+                  echo ""
+                  echo "=== Scan complete. Exit code: $EXIT_CODE ==="
+                  # exit-code 0 para no detener el CronJob aunque haya CVEs;
+                  # los resultados se revisan en los logs (Kibana/ELK).
+                  exit 0
+              env:
+                - name: TRIVY_CACHE_DIR
+                  value: /root/.cache/trivy
+              volumeMounts:
+                - name: trivy-cache
+                  mountPath: /root/.cache/trivy
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "500m"
+          volumes:
+            - name: trivy-cache
+              emptyDir: {}
+
+---
+# Job de escaneo inmediato para validación inicial (se ejecuta una sola vez).
+# Útil al desplegar por primera vez: kubectl apply -f trivy-cronjob.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: trivy-initial-scan
+  namespace: dev
+  labels:
+    app.kubernetes.io/part-of: circleguard
+    app.kubernetes.io/component: security
+spec:
+  template:
+    metadata:
+      labels:
+        app: trivy-initial-scan
+    spec:
+      serviceAccountName: trivy-scanner
+      restartPolicy: OnFailure
+      containers:
+        - name: trivy-scanner
+          image: aquasec/trivy:0.50.0
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "=== CircleGuard Initial Security Scan — $(date -Iseconds) ==="
+              # Escanea imágenes base usadas en el proyecto
+              SERVICES="
+                simongarcia01/auth-service:latest
+                simongarcia01/identity-service:latest
+                simongarcia01/gateway-service:latest
+                simongarcia01/notification-service:latest
+                simongarcia01/promotion-service:latest
+                simongarcia01/dashboard-service:latest
+                simongarcia01/form-service:latest
+              "
+              for IMAGE in $SERVICES; do
+                echo ""
+                echo "--- $IMAGE ---"
+                trivy image \
+                  --severity HIGH,CRITICAL \
+                  --format table \
+                  --exit-code 0 \
+                  --no-progress \
+                  "$IMAGE" 2>&1
+              done
+              echo "=== Initial scan complete ==="
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

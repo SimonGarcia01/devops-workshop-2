@@ -17,3 +17,28 @@ jwt:
 qr:
   secret: ${QR_SECRET:this-is-a-super-long-qr-secret-key-for-testing-123456789}
   expiration: ${QR_EXPIRATION:300}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: circleguard-gateway-service
+      environment: ${ENVIRONMENT:dev}
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://jaeger-service:4318/v1/traces
+
+logging:
+  pattern:
+    console: "%d{ISO8601} %5p [%X{traceId:-},%X{spanId:-}] [circleguard-gateway-service] %logger{36} --- %m%n"

@@ -29,3 +29,28 @@ qr:
 
 server:
   port: 8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: circleguard-notification-service
+      environment: ${ENVIRONMENT:dev}
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://jaeger-service:4318/v1/traces
+
+logging:
+  pattern:
+    console: "%d{ISO8601} %5p [%X{traceId:-},%X{spanId:-}] [circleguard-notification-service] %logger{36} --- %m%n"

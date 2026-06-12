@@ -24,13 +24,67 @@ spring:
   flyway:
     table: flyway_schema_history_auth
 
+# External Configuration Pattern — parámetros JWT y QR sobreescribibles por env var
 jwt:
-  secret: "my-super-secret-dev-key-32-chars-long-12345678"
-  expiration: 3600000
+  secret: ${JWT_SECRET:my-super-secret-dev-key-32-chars-long-12345678}
+  expiration: ${JWT_EXPIRATION:3600000}
 
 qr:
-  secret: "my-qr-secret-key-for-dev-1234567890"
-  expiration: 300
+  secret: ${QR_SECRET:my-qr-secret-key-for-dev-1234567890}
+  expiration: ${QR_EXPIRATION:300000}
+
+# URL del identity-service (Circuit Breaker + Retry target)
+identity:
+  service:
+    url: ${IDENTITY_SERVICE_URL:http://identity-service:8083}
 
 server:
   port: 8180
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: circleguard-auth-service
+      environment: ${ENVIRONMENT:dev}
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://jaeger-service:4318/v1/traces
+
+logging:
+  pattern:
+    console: "%d{ISO8601} %5p [%X{traceId:-},%X{spanId:-}] [circleguard-auth-service] %logger{36} --- %m%n"
+
+# Circuit Breaker + Retry Pattern — Resilience4j config para identity-service
+resilience4j:
+  circuitbreaker:
+    instances:
+      identityService:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 5
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 20s
+        permitted-number-of-calls-in-half-open-state: 2
+        register-health-indicator: true
+  retry:
+    instances:
+      identityService:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignore-exceptions:
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException

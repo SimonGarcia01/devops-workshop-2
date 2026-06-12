@@ -1,0 +1,160 @@
+# RBAC para namespace prod — mismo patrón que dev/stage con ServiceAccounts por servicio.
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auth-service
+  namespace: prod
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: identity-service
+  namespace: prod
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gateway-service
+  namespace: prod
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: notification-service
+  namespace: prod
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: promotion-service
+  namespace: prod
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dashboard-service
+  namespace: prod
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: form-service
+  namespace: prod
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: microservice-runtime
+  namespace: prod
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: auth-service-runtime
+  namespace: prod
+subjects:
+  - kind: ServiceAccount
+    name: auth-service
+    namespace: prod
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: identity-service-runtime
+  namespace: prod
+subjects:
+  - kind: ServiceAccount
+    name: identity-service
+    namespace: prod
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gateway-service-runtime
+  namespace: prod
+subjects:
+  - kind: ServiceAccount
+    name: gateway-service
+    namespace: prod
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: notification-service-runtime
+  namespace: prod
+subjects:
+  - kind: ServiceAccount
+    name: notification-service
+    namespace: prod
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: promotion-service-runtime
+  namespace: prod
+subjects:
+  - kind: ServiceAccount
+    name: promotion-service
+    namespace: prod
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dashboard-service-runtime
+  namespace: prod
+subjects:
+  - kind: ServiceAccount
+    name: dashboard-service
+    namespace: prod
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: form-service-runtime
+  namespace: prod
+subjects:
+  - kind: ServiceAccount
+    name: form-service
+    namespace: prod
+roleRef:
+  kind: Role
+  name: microservice-runtime
+  apiGroup: rbac.authorization.k8s.io

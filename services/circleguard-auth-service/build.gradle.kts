@@ -25,4 +25,8 @@ dependencies {
     testImplementation("com.h2database:h2")
     testImplementation("org.springframework.boot:spring-boot-starter-web")
     testImplementation("com.fasterxml.jackson.core:jackson-databind")
+
+    // Circuit Breaker + Retry — Patrón de Resiliencia
+    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.1.0")
+    implementation("org.springframework.boot:spring-boot-starter-aop")  // requerido por Resilience4j annotations
 }

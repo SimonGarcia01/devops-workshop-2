@@ -1,0 +1,46 @@
+# OWASP ZAP Baseline scan configuration for CircleGuard
+# Passive scan only — no active attacks.
+# Used in CI/CD pipelines to detect obvious misconfigurations.
+
+env:
+  contexts:
+    - name: CircleGuard-Dev
+      urls:
+        - http://localhost:30081
+        - http://localhost:30087
+        - http://localhost:30086
+        - http://localhost:30084
+      includePaths:
+        - "http://localhost:30081/api/.*"
+        - "http://localhost:30087/api/.*"
+        - "http://localhost:30086/api/.*"
+        - "http://localhost:30084/api/.*"
+      excludePaths:
+        - "http://localhost:30081/actuator/.*"
+        - ".*\\.js$"
+        - ".*\\.css$"
+
+jobs:
+  - type: spider
+    parameters:
+      context: CircleGuard-Dev
+      maxDuration: 2
+      acceptCookies: false
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk/reports
+      reportFile: zap-baseline-report
+      reportTitle: "CircleGuard Security Baseline Scan"
+      reportDescription: "Passive OWASP ZAP scan — dev environment"
+
+  - type: report
+    parameters:
+      template: sarif-json
+      reportDir: /zap/wrk/reports
+      reportFile: zap-baseline-report

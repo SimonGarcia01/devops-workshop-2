@@ -43,9 +43,48 @@ spring:
       host: ${SPRING_DATA_REDIS_HOST:redis-service}
       port: ${SPRING_DATA_REDIS_PORT:6379}
 
+# External Configuration Pattern — parámetros de negocio de CircleGuard
+# Complementa SystemSettings (BD, cambios en runtime) con config estática de startup.
+# Los nombres de Kafka topics son críticos: cambiarlos sin redespliegue rompería
+# la integración con form-service y notification-service.
+circleguard:
+  kafka:
+    topic-status-changed: ${CIRCLEGUARD_KAFKA_TOPIC_STATUS_CHANGED:promotion.status.changed}
+    topic-survey-submitted: ${CIRCLEGUARD_KAFKA_TOPIC_SURVEY_SUBMITTED:survey.submitted}
+    topic-certificate-validated: ${CIRCLEGUARD_KAFKA_TOPIC_CERT_VALIDATED:certificate.validated}
+  fence:
+    default-mandatory-days: ${CIRCLEGUARD_FENCE_MANDATORY_DAYS:14}
+    default-encounter-window-days: ${CIRCLEGUARD_FENCE_ENCOUNTER_WINDOW_DAYS:14}
+    default-auto-threshold-seconds: ${CIRCLEGUARD_FENCE_AUTO_THRESHOLD_SECONDS:3600}
+
 server:
   port: 8088
 
 jwt:
   secret: ${JWT_SECRET:my-super-secret-dev-key-32-chars-long-12345678}
   expiration: ${JWT_EXPIRATION:3600000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: circleguard-promotion-service
+      environment: ${ENVIRONMENT:dev}
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://jaeger-service:4318/v1/traces
+
+logging:
+  pattern:
+    console: "%d{ISO8601} %5p [%X{traceId:-},%X{spanId:-}] [circleguard-promotion-service] %logger{36} --- %m%n"

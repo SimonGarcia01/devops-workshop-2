@@ -15,4 +15,8 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     runtimeOnly("org.postgresql:postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+    // Circuit Breaker — Patrón de Resiliencia
+    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.1.0")
+    implementation("org.springframework.boot:spring-boot-starter-aop")  // requerido por Resilience4j annotations
 }

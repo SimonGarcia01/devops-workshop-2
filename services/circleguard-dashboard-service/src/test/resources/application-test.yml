@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:dashboardtestdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+  flyway:
+    enabled: false
+
+circleguard:
+  promotion-service:
+    url: http://localhost:8088

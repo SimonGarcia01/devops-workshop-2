@@ -1,0 +1,124 @@
+# TLS para servicios expuestos públicamente — Minikube + NGINX Ingress.
+#
+# Prerequisitos:
+#   minikube addons enable ingress
+#
+# Generar certificado autofirmado y crear Secret TLS:
+#   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#     -keyout /tmp/tls.key \
+#     -out    /tmp/tls.crt \
+#     -subj "/CN=circleguard.local/O=CircleGuard/C=CO"
+#
+#   kubectl create secret tls circleguard-tls \
+#     --cert=/tmp/tls.crt \
+#     --key=/tmp/tls.key \
+#     --namespace=dev
+#
+# Agregar al /etc/hosts (o C:\Windows\System32\drivers\etc\hosts):
+#   $(minikube ip)  circleguard.local
+
+---
+# Secret placeholder — se crea con el comando openssl indicado arriba.
+# Se incluye aquí como referencia; el contenido real viene de generate-tls.sh.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: circleguard-tls
+  namespace: dev
+  labels:
+    app.kubernetes.io/part-of: circleguard
+    app.kubernetes.io/component: tls
+type: kubernetes.io/tls
+data:
+  tls.crt: ""   # kubectl create secret tls circleguard-tls --cert=tls.crt --key=tls.key -n dev
+  tls.key: ""
+
+---
+# Ingress principal — redirige HTTP → HTTPS, terminación TLS en el borde.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: circleguard-ingress
+  namespace: dev
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - circleguard.local
+      secretName: circleguard-tls
+  rules:
+    - host: circleguard.local
+      http:
+        paths:
+          # API Gateway — entrada única para todos los microservicios
+          - path: /api/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: gateway-service
+                port:
+                  number: 8087
+          # Raíz → Gateway
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway-service
+                port:
+                  number: 8087
+
+---
+# Ingress para herramientas de observabilidad (acceso interno/admin)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: circleguard-observability-ingress
+  namespace: dev
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Restringir acceso a redes internas en producción con whitelist-source-range
+    # nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,172.16.0.0/12"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - grafana.circleguard.local
+        - kibana.circleguard.local
+        - jaeger.circleguard.local
+      secretName: circleguard-tls
+  rules:
+    - host: grafana.circleguard.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana-service
+                port:
+                  number: 3000
+    - host: kibana.circleguard.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kibana-service
+                port:
+                  number: 5601
+    - host: jaeger.circleguard.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jaeger-ui
+                port:
+                  number: 16686

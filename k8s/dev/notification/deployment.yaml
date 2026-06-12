@@ -3,49 +3,51 @@ kind: Deployment
 metadata:
   name: notification-service
   namespace: dev
-
 spec:
   replicas: 1
-
   selector:
     matchLabels:
       app: notification-service
-
   template:
     metadata:
       labels:
         app: notification-service
-
     spec:
       containers:
         - name: notification-service
           image: simongarcia01/notification-service:latest
           imagePullPolicy: Always
-
           ports:
             - containerPort: 8082
-
           env:
             - name: AUTH_API_URL
               value: http://auth-service:8180
-
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: kafka-service:9092
-
             - name: MAIL_HOST
               value: dummy
-
             - name: MAIL_PORT
               value: "0"
-
             - name: JWT_SECRET
               value: "my-super-secret-dev-key-32-chars-long-12345678"
-
             - name: JWT_EXPIRATION
               value: "3600000"
-
             - name: QR_SECRET
               value: "this-is-a-super-long-notification-qr-secret-123456"
-
             - name: QR_EXPIRATION
               value: "300"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            initialDelaySeconds: 45
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+  type: NodePort
