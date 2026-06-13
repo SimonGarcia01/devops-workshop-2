@@ -1,0 +1,534 @@
+' ══════════════════════════════════════════════════════════════════
+' CIRCLEGUARD — Diagramas de Arquitectura PlantUML
+' Para renderizar: https://www.plantuml.com/plantuml/uml/
+' Separa cada diagrama por el separador @startuml / @enduml
+' ══════════════════════════════════════════════════════════════════
+
+
+' ──────────────────────────────────────────────────────────────────
+' DIAGRAMA 1: Contexto del Sistema (C4 Level 1)
+' ──────────────────────────────────────────────────────────────────
+@startuml diagrama-1-contexto
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam ArrowColor #555555
+skinparam actorBorderColor #444444
+skinparam packageBorderColor #AAAAAA
+
+title CircleGuard — Contexto del Sistema
+
+actor "Empleado / Docente\n(Usuario Campus)" as user
+actor "Autoridad\nSanitaria" as admin
+actor "Visitante" as visitor
+
+package "CircleGuard System" <<System>> {
+    component "Aplicación Móvil\n(React Native)" as mobile
+    component "Portal Administrativo\n(Dashboard Web)" as dashboard
+    component "API Gateway\n& Backend" as backend
+}
+
+database "LDAP\nCorporativo" as ldap
+cloud "Servicio\nde Email" as email
+cloud "Servicio\nde SMS / Push" as sms
+
+user    --> mobile     : Login QR\nValidación acceso
+visitor --> mobile     : Login local\nFormularios
+admin   --> dashboard  : Gestión estados\nReportes analíticos
+
+mobile    --> backend  : REST / JWT
+dashboard --> backend  : REST / JWT
+
+backend --> ldap  : Autenticación\ncorporativa
+backend --> email : Alertas\nde salud
+backend --> sms   : Notificaciones\nurgentes
+
+note right of backend
+  8 microservicios Spring Boot
+  PostgreSQL · Neo4j · Redis
+  Kafka · Kubernetes
+end note
+@enduml
+
+
+' ──────────────────────────────────────────────────────────────────
+' DIAGRAMA 2: Microservicios y Comunicación
+' ──────────────────────────────────────────────────────────────────
+@startuml diagrama-2-microservicios
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam componentBorderColor #666666
+skinparam databaseBorderColor #888888
+skinparam queueBorderColor #888888
+skinparam ArrowColor #444444
+skinparam ArrowFontSize 10
+skinparam noteFontSize 10
+
+title CircleGuard — Microservicios e Interacciones
+
+' ── Clientes externos ───────────────────────────────────────────
+actor "Móvil / Web" as client
+
+' ── Capa de entrada ─────────────────────────────────────────────
+package "Entrada" {
+    component "gateway-service\n:8087" as gw #LightBlue
+    component "auth-service\n:8180" as auth #LightBlue
+}
+
+' ── Núcleo de negocio ───────────────────────────────────────────
+package "Negocio" {
+    component "promotion-service\n:8088" as promo #LightGreen
+    component "identity-service\n:8083" as identity #LightGreen
+    component "form-service\n:8086" as form #LightGreen
+    component "dashboard-service\n:8084" as dash #LightGreen
+    component "notification-service\n:8082" as notif #LightGreen
+    component "file-service\n:8085" as file #LightGreen
+}
+
+' ── Infraestructura ─────────────────────────────────────────────
+package "Infraestructura" {
+    database "PostgreSQL\n:5432" as pg
+    database "Neo4j\n:7687" as neo4j
+    database "Redis\n:6379" as redis
+    database "OpenLDAP\n:389" as ldap
+    queue    "Apache Kafka\n:9092" as kafka
+}
+
+' ── Flujos síncronos (REST) ─────────────────────────────────────
+client  --> gw    : HTTP + JWT / QR Token
+client  --> auth  : POST /api/v1/auth/login\nPOST /api/v1/qr/generate
+
+gw    --> redis   : GET user:status:<id>\n(cache L2)
+gw    --> auth    : Validar token\n(fallback)
+
+auth  ..> identity : POST /api/v1/identities/map\n[Circuit Breaker + Retry]
+auth  --> pg       : auth_db
+auth  --> ldap     : Autenticación LDAP\n(Chain of Responsibility)
+
+identity --> pg    : identity_db
+identity --> neo4j : Grafo de contactos
+
+dash  ..> promo    : GET /api/v1/health-status/stats\n[Circuit Breaker]
+dash  --> pg       : dashboard_db
+
+promo --> pg       : promotion_db
+promo --> neo4j    : Encuentros entre usuarios
+promo --> redis    : Cache estado de salud\n(Cache-Aside)
+
+form  --> pg       : form_db
+
+file  --> pg       : file metadata
+
+' ── Flujos asíncronos (Kafka) ───────────────────────────────────
+form  --> kafka  : survey.submitted
+form  --> kafka  : certificate.validated
+promo --> kafka  : promotion.status.changed
+promo --> kafka  : circle.fenced
+promo --> kafka  : alert.priority
+
+kafka --> promo  : survey.submitted\ncertificate.validated
+kafka --> notif  : promotion.status.changed\ncircle.fenced\nalert.priority
+
+notif --> ldap   : (lookup email)
+
+' ── Notas ───────────────────────────────────────────────────────
+note right of auth
+  Patrones:
+  • Chain of Responsibility (LDAP→DB)
+  • External Configuration
+  • Circuit Breaker + Retry
+end note
+
+note right of promo
+  Patrones:
+  • Cache-Aside (Redis)
+  • Feature Toggle (SystemSettings)
+  • Observer / Pub-Sub (Kafka)
+end note
+
+note right of notif
+  Patrones:
+  • Strategy (Email/SMS/Push)
+  • Facade (NotificationDispatcher)
+  • Template Method (FreeMarker)
+end note
+
+legend right
+  ──►  REST síncrono
+  ..►  REST con resiliencia
+  ──►  Kafka asíncrono
+endlegend
+@enduml
+
+
+' ──────────────────────────────────────────────────────────────────
+' DIAGRAMA 3: Infraestructura Kubernetes
+' ──────────────────────────────────────────────────────────────────
+@startuml diagrama-3-kubernetes
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam packageBorderColor #888888
+skinparam componentBorderColor #666666
+skinparam ArrowColor #555555
+skinparam ArrowFontSize 10
+
+title CircleGuard — Infraestructura Kubernetes (Minikube)
+
+node "Kubernetes Cluster (Minikube)" {
+
+    package "namespace: dev  [300xx]" as ns_dev #EEF5FF {
+        package "Microservicios" as ms_dev {
+            component "auth\n:30081" as auth_d
+            component "identity\n:30083" as id_d
+            component "gateway\n:30087" as gw_d
+            component "notification\n:30082" as notif_d
+            component "dashboard\n:30084" as dash_d
+            component "form\n:30086" as form_d
+            component "promotion\nClusterIP" as promo_d
+            component "mobile\n:30090" as mob_d
+        }
+        package "Infraestructura de Datos" as infra_dev {
+            database "PostgreSQL" as pg_d
+            database "Neo4j" as neo_d
+            database "Redis" as redis_d
+            database "OpenLDAP" as ldap_d
+            queue "Kafka +\nZookeeper" as kafka_d
+        }
+    }
+
+    package "namespace: stage  [310xx]" as ns_stage #EEFFEE {
+        component "auth :31081\nidentity :31083\ngateway :31087\n..." as svcs_s
+        database "PostgreSQL · Neo4j\nRedis · Kafka" as infra_s
+    }
+
+    package "namespace: prod  [320xx]\nreplicas=2" as ns_prod #FFF3EE {
+        component "auth :32081\nidentity :32083\ngateway :32087\n..." as svcs_p
+        database "PostgreSQL · Neo4j\nRedis · Kafka" as infra_p
+    }
+
+    package "namespace: ci" as ns_ci #F5F5F5 {
+        component "Jenkins\n:30080" as jenkins
+        component "SonarQube\n:30900" as sonar
+    }
+
+    package "namespace: observability" as ns_obs #FDF5FF {
+        component "Prometheus\n:30090" as prom
+        component "Grafana\n:30300" as grafana
+        component "Jaeger\n:30686" as jaeger
+        component "Kibana\n:30601" as kibana
+    }
+}
+
+actor "Developer" as dev
+actor "Usuario\nCampus" as user2
+actor "Admin" as admin2
+
+dev   --> jenkins  : git push → pipeline
+user2 --> gw_d     : Validación QR\n(acceso campus)
+admin2 --> dash_d  : Panel salud
+
+jenkins --> ns_dev   : kubectl apply (dev)
+jenkins --> ns_stage : kubectl apply (stage)
+jenkins ..> ns_prod  : kubectl apply (prod)\n[aprobación manual]
+
+ms_dev  --> prom     : /actuator/prometheus
+ms_dev  --> jaeger   : traces OTLP
+
+note bottom of ns_dev
+  Terraform: terraform apply
+  -var="kube_context=minikube"
+  Workspace: circleguard-dev
+end note
+
+note bottom of ns_prod
+  replicas: 2
+  resources: cpu=1000m mem=1Gi
+  Secrets via K8s Secrets
+  RBAC: ServiceAccount por servicio
+end note
+@enduml
+
+
+' ──────────────────────────────────────────────────────────────────
+' DIAGRAMA 4: Pipeline CI/CD
+' ──────────────────────────────────────────────────────────────────
+@startuml diagrama-4-cicd
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ActivityBorderColor #555555
+skinparam ActivityBackgroundColor #F0F8FF
+skinparam ArrowColor #444444
+skinparam noteBorderColor #AAAAAA
+skinparam noteFontSize 10
+
+title CircleGuard — Pipeline CI/CD (GitFlow + Jenkins)
+
+|#EEF5FF| develop / feature/*\n**Jenkinsfile**|
+|#EEFFEE| release/*\n**Jenkinsfile.stage**|
+|#FFF3EE| main\n**Jenkinsfile.master**|
+
+|develop / feature/*\n**Jenkinsfile**|
+start
+:git push;
+:Checkout SCM;
+:Semantic Version\n**vX.Y.Z-dev.{build}**;
+:Gradle Build;
+:Unit Tests + JUnit report;
+:Frontend Build (npm);
+:SonarQube Analysis;
+:Quality Gate;
+if (Quality Gate?) then (PASS)
+    :Docker Build\n(8 imágenes);
+    :Trivy Scan\n<color:#FF8800>warn HIGH/CRITICAL</color>;
+    :Docker Push → DockerHub;
+    :Deploy → namespace **dev**\n(kubectl apply);
+    :Smoke Tests\n(curl /actuator/health);
+    :Email notificación;
+    stop
+else (FAIL)
+    :Email FAILED;
+    stop
+endif
+
+|release/*\n**Jenkinsfile.stage**|
+:git push release/*;
+:Semantic Version\n**vX.Y.Z-rc.{build}**;
+:Build + Test + Sonar + QG;
+:Docker Build;
+:Trivy Scan\n<color:#FF0000>falla en CRITICAL</color>;
+:Docker Push → DockerHub;
+:Deploy → namespace **stage**\n(kubectl set image);
+:Smoke Tests + validación JWT;
+if (Tests?) then (PASS)
+    :Email STAGE OK\n→ listo para prod;
+    stop
+else (FAIL)
+    :Email FAILED;
+    stop
+endif
+
+|main\n**Jenkinsfile.master**|
+:git merge main;
+:Semantic Version\n**vX.Y.Z** (stable);
+:Build + Test + Sonar + QG;
+:E2E Tests (pytest);
+:Performance Tests (Locust\n20 usuarios, 60s);
+:Security Tests (OWASP ZAP);
+:Docker Build;
+:Trivy Scan\n<color:#FF0000>falla en HIGH + CRITICAL</color>;
+:Docker Push\n+ tag **latest**;
+:Generate Release Notes\n(scripts/generate-release-notes.sh);
+:Update CHANGELOG.md;
+
+fork
+    :Input aprobación manual\n(admin / lead-dev, 30min timeout);
+fork again
+    :timeout → pipeline cancela;
+end fork
+
+:Deploy → namespace **prod**\n(kubectl set image, replicas=2);
+:Verify Production\n(curl 32081/32083/32087/32084);
+:git tag **vX.Y.Z**;
+:git push origin tag + CHANGELOG;
+:Email DEPLOYED\n+ release-notes.md adjunto;
+stop
+@enduml
+
+
+' ──────────────────────────────────────────────────────────────────
+' DIAGRAMA 5: Modelo de Datos (Entidades principales)
+' ──────────────────────────────────────────────────────────────────
+@startuml diagrama-5-datos
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam classBorderColor #666666
+skinparam classBackgroundColor #FEFEFE
+skinparam ArrowColor #555555
+skinparam packageBorderColor #AAAAAA
+
+title CircleGuard — Modelo de Datos Principal
+
+package "auth-service (PostgreSQL)" {
+    class LocalUser {
+        +UUID id
+        +String username
+        +String passwordHash
+        +String role
+        +Boolean active
+    }
+}
+
+package "identity-service (PostgreSQL)" {
+    class IdentityMapping {
+        +UUID id
+        +String realIdentityHash
+        +UUID anonymousId
+        +LocalDateTime createdAt
+    }
+}
+
+package "promotion-service (PostgreSQL + Neo4j)" {
+    class HealthStatus {
+        +UUID anonymousId
+        +StatusEnum status
+        +String reason
+        +LocalDateTime updatedAt
+    }
+    class SystemSettings {
+        +Boolean unconfirmedFencingEnabled
+        +Integer mandatoryFenceDays
+        +Integer encounterWindowDays
+        +Long autoThresholdSeconds
+    }
+    class AccessPoint {
+        +UUID id
+        +String locationId
+        +String buildingCode
+        +String description
+    }
+
+    class "UserNode (Neo4j)" as UserNode {
+        +String anonymousId
+    }
+    class "EncounterEdge (Neo4j)" as EncEdge {
+        +Long timestamp
+        +String locationId
+        +Integer durationSeconds
+    }
+
+    UserNode "1" -- "0..*" EncEdge : encuentros
+    UserNode "0..*" -- "1" EncEdge
+}
+
+package "form-service (PostgreSQL)" {
+    class HealthSurvey {
+        +UUID id
+        +UUID anonymousId
+        +SurveyType type
+        +String answers
+        +LocalDateTime submittedAt
+    }
+    class Certificate {
+        +UUID id
+        +UUID anonymousId
+        +String certificateType
+        +LocalDate validUntil
+        +Boolean validated
+    }
+}
+
+package "dashboard-service (PostgreSQL)" {
+    class AnalyticsReport {
+        +UUID id
+        +String department
+        +Integer activeCount
+        +Integer suspectCount
+        +LocalDate reportDate
+    }
+}
+
+package "notification-service" {
+    class NotificationLog {
+        +UUID id
+        +UUID anonymousId
+        +String channel
+        +String status
+        +LocalDateTime sentAt
+    }
+}
+
+' Relaciones entre servicios (por anonymousId)
+IdentityMapping "1" ..> HealthStatus : anonymousId
+HealthStatus    "1" ..> HealthSurvey : anonymousId
+HealthStatus    "1" ..> UserNode     : anonymousId
+HealthStatus    "1" ..> NotificationLog : triggers
+
+note bottom of IdentityMapping
+  k-anonimato: el realIdentityHash
+  nunca sale del identity-service.
+  El resto del sistema opera
+  solo con anonymousId (UUID).
+end note
+@enduml
+
+
+' ──────────────────────────────────────────────────────────────────
+' DIAGRAMA 6: Seguridad y Observabilidad
+' ──────────────────────────────────────────────────────────────────
+@startuml diagrama-6-seguridad-observabilidad
+!theme plain
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam packageBorderColor #888888
+skinparam componentBorderColor #666666
+skinparam ArrowColor #444444
+skinparam ArrowFontSize 10
+
+title CircleGuard — Seguridad y Observabilidad
+
+package "Seguridad (namespace: dev)" #FFF0F0 {
+    component "K8s Secrets\n(circleguard-db-credentials\ncircleguard-auth-keys\ncircleguard-neo4j-credentials)" as secrets
+    component "RBAC\nServiceAccount por servicio\nRole: microservice-runtime" as rbac
+    component "TLS / Ingress NGINX\nHost: circleguard.local\nSAN: *.circleguard.local" as tls
+    component "Trivy CronJob\nSchedule: 0 2 * * *\n(scan diario de imágenes)" as trivy
+}
+
+package "Observabilidad (namespace: observability)" #F0F0FF {
+    component "Prometheus\n:9090\nScrape /actuator/prometheus" as prom
+    component "Grafana\n:3000\nDashboards por servicio" as grafana
+    component "Jaeger\n:16686\nDistributed Tracing (OTLP)" as jaeger
+    component "Elasticsearch\n:9200" as es
+    component "Logstash\n:5044" as logstash
+    component "Kibana\n:5601" as kibana
+}
+
+package "Microservicios" #F0FFF0 {
+    component "Todos los servicios\nSpring Boot Actuator\n/health · /metrics · /prometheus" as svcs
+}
+
+svcs --> prom     : métricas Prometheus\n(pull)
+svcs --> jaeger   : traces OTLP HTTP\nhttp://jaeger-service:4318
+svcs --> logstash : logs estructurados\n(Logback → Logstash)
+
+prom    --> grafana : datasource
+logstash --> es
+es      --> kibana  : datasource
+
+secrets ..> svcs  : env vars desde\nvalueFrom.secretKeyRef
+rbac    ..> svcs  : ServiceAccount\nbinding
+tls     ..> svcs  : Ingress TLS termination
+trivy   ..> svcs  : scan nocturno\nde imágenes en pods
+
+note right of prom
+  Métricas de negocio:
+  • circleguard_access_validations_total
+  • circleguard_health_status_changes
+  • circleguard_active_users_gauge
+  • jvm_memory_used_bytes
+  • http_server_requests_seconds
+end note
+
+note right of jaeger
+  Trace ID propagado
+  en todos los logs:
+  [traceId, spanId]
+  Correlación logs ↔ traces
+end note
+
+note bottom of trivy
+  CronJob en namespace dev:
+  kubectl get pods -o json |
+  trivy image --exit-code 0
+  Resultados archivados en Jenkins
+end note
+@enduml

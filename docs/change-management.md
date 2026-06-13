@@ -94,10 +94,10 @@ El pipeline notifica automáticamente por email a `claudiaoponia@gmail.com` en l
 
 | Evento | Asunto del email | Adjunto |
 |---|---|---|
-| Pipeline dev falla | `❌ FAILED: <job> #<build>` | — |
-| Stage deploy exitoso | `✅ STAGE OK: <version> listo para prod` | — |
-| Prod deploy exitoso | `🚀 DEPLOYED: CircleGuard <version> en PRODUCCIÓN` | `release-notes.md` |
-| Prod pipeline falla | `❌ FAILED: Pipeline PROD <job>` | — |
+| Pipeline dev falla | ` FAILED: <job> #<build>` | — |
+| Stage deploy exitoso | ` STAGE OK: <version> listo para prod` | — |
+| Prod deploy exitoso | ` DEPLOYED: CircleGuard <version> en PRODUCCIÓN` | `release-notes.md` |
+| Prod pipeline falla | ` FAILED: Pipeline PROD <job>` | — |
 
 ---
 

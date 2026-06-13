@@ -1,7 +1,7 @@
 variable "kube_context" {
   type        = string
   description = "kubectl context to use (minikube for local, default for k3s/GCP)"
-  default     = "default"
+  default     = "minikube"
 }
 
 variable "image_tag" {
