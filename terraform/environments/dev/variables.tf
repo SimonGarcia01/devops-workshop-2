@@ -1,3 +1,9 @@
+variable "kube_context" {
+  type        = string
+  description = "kubectl context to use (minikube for local, default for k3s/GCP)"
+  default     = "minikube"
+}
+
 variable "image_tag" {
   type        = string
   description = "Docker image tag to deploy"
